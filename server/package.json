@@ -1,0 +1,21 @@
+{
+  "name": "op-backend",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@apidevtools/json-schema-ref-parser": "^14.2.1",
+    "@interledger/open-payments": "^7.1.3",
+    "@interledger/openapi": "^2.0.4",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2"
+  },
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
