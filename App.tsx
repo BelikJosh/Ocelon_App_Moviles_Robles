@@ -11,7 +11,6 @@ import AppTabs from './src/pages/AppTabs';
 import CrearUsuarioScreen from './src/pages/CrearUsuarioScreen';
 import LoginScreen from './src/pages/LoginScreen';
 
-
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {

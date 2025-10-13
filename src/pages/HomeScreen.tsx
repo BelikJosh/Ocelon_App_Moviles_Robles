@@ -1,20 +1,18 @@
+// HomeScreen.tsx
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useState } from 'react';
 import {
   Image,
-  Platform,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   useWindowDimensions,
   View
 } from 'react-native';
 
-const BASE_W = 375; // iPhone X ancho base
-const BASE_H = 812; // iPhone X alto base
+const BASE_W = 375;
+const BASE_H = 812;
 
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
@@ -31,16 +29,15 @@ export default function HomeScreen() {
   const ICON_SIZE = ms(22);
   const MAX_W = 720;
 
-  // Pull to refresh (opcional)
+  // Pull to refresh
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    // aquí podrías recargar data remota
     setTimeout(() => setRefreshing(false), 800);
   }, []);
 
   return (
-    <SafeAreaView style={[s.container, { paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 }]}>
+    <View style={s.container}>
       <ScrollView
         contentContainerStyle={{
           flexGrow: 1,
@@ -97,7 +94,7 @@ export default function HomeScreen() {
                 { fontSize: ms(28), lineHeight: ms(34), marginBottom: vs(8), textAlign: 'center' },
               ]}
             >
-              Park with ease, <Text style={{ color: '#42b883' }}>pay with speed</Text>, live a better life.
+              Park with ease, <Text style={{ color: '#42b883' }}>pay with speed</Text>, live a better life.
             </Text>
 
             {/* Brand row con mini logo */}
@@ -157,12 +154,18 @@ export default function HomeScreen() {
           </Text>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 function FeatureCard({
-  hs, vs, ms, radius, icon, title, text,
+  hs,
+  vs,
+  ms,
+  radius,
+  icon,
+  title,
+  text,
 }: {
   hs: (n: number) => number;
   vs: (n: number) => number;

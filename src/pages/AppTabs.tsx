@@ -1,29 +1,101 @@
-// AppTabs.tsx
+// AppTabs.tsx - Versión completa con Modal
 import { FontAwesome5, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState } from 'react';
+import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// 👉 Usa tu HomeScreen real
-import HomeScreen from './HomeScreen';
-
-// Si ya tienes estas páginas reales, importa desde ./pages/* si aplica
 import ConfigScreen from './ConfigScreen';
+import HomeScreen from './HomeScreen';
 import MapScreen from './MapScreen';
 import ScannerScreen from './ScannerScreen';
+import SupportScreen from './SupportScreen';
 import WalletScreen from './WalletScreen';
 
-// Perfil (dummy). Si ya tienes uno real, impórtalo y borra este comp
-function ProfileScreen() {
+// ----------------- TOP BAR -----------------
+interface TopBarProps {
+  userName?: string;
+  onPressProfile?: () => void;
+  onPressNotifications?: () => void;
+  onPressSupport?: () => void;
+}
+
+function TopBar({
+  userName = 'Usuario',
+  onPressProfile,
+  onPressNotifications,
+  onPressSupport,
+}: TopBarProps) {
+  const insets = useSafeAreaInsets();
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#0b0b0c' }} edges={['top', 'left', 'right']}>
-      <View style={s.center}>
-        <Ionicons name="person-circle" size={84} color="#cfcfff" />
-        <Text style={s.title}>Tu perfil</Text>
-        <Text style={s.text}>Configura tus datos y preferencias.</Text>
+    <View style={[styles.topBarContainer, { paddingTop: insets.top + 12 }]}>
+      <TouchableOpacity style={styles.profileSection} onPress={onPressProfile} activeOpacity={0.7}>
+        <View style={styles.avatarCircle}>
+          <Ionicons name="person" size={20} color="#0b0b0c" />
+        </View>
+        <View>
+          <Text style={styles.greeting}>Hola, {userName}</Text>
+          <Ionicons name="chevron-forward" size={14} color="#42b883" />
+        </View>
+      </TouchableOpacity>
+
+      <View style={styles.rightSection}>
+        <TouchableOpacity style={styles.iconButton} onPress={onPressNotifications} activeOpacity={0.7}>
+          <Ionicons name="notifications-outline" size={24} color="#42b883" />
+          <View style={styles.badge} />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.iconButton, styles.supportButton]} onPress={onPressSupport} activeOpacity={0.7}>
+          <MaterialIcons name="headset-mic" size={20} color="#0b0b0c" />
+          <Text style={styles.supportText}>Soporte</Text>
+        </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
+  );
+}
+
+// Wrapper con Modal de Soporte
+function ScreenWithTopBar({ Component, navigation }: { Component: any; navigation: any }) {
+  const insets = useSafeAreaInsets();
+  const [showSupport, setShowSupport] = useState(false);
+  
+  return (
+    <>
+      <View style={{ flex: 1, backgroundColor: '#0b0b0c' }}>
+        <TopBar 
+          userName="Puchito"
+          onPressProfile={() => console.log('ProfileScreen')}
+          onPressNotifications={() => console.log('NotifScreen')}
+          onPressSupport={() => setShowSupport(true)}
+        />
+        <View style={{ flex: 1, paddingBottom: 74 + insets.bottom }}>
+          <Component />
+        </View>
+      </View>
+
+      {/* Modal de Soporte */}
+      <Modal
+        visible={showSupport}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowSupport(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: '#0b0b0c' }}>
+          {/* Header del modal */}
+          <View style={[styles.modalHeader, { paddingTop: insets.top - 20 }]}>
+            <Text style={styles.modalTitle}>Soporte</Text>
+            <TouchableOpacity 
+              onPress={() => setShowSupport(false)}
+              style={styles.closeButton}
+            >
+              <Ionicons name="close" size={28} color="#42b883" />
+            </TouchableOpacity>
+          </View>
+          <SupportScreen />
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -64,23 +136,18 @@ export default function AppTabs() {
     >
       <Tab.Screen
         name="Home"
-        component={HomeScreen}   // 👈 ahora sí importado
-        options={{
-          tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />,
-          tabBarLabel: 'Home',
-        }}
-      />
+        options={{ tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />, tabBarLabel: 'Home' }}
+      >
+        {(props) => <ScreenWithTopBar Component={HomeScreen} navigation={props.navigation} />}
+      </Tab.Screen>
 
       <Tab.Screen
         name="Wallet"
-        component={WalletScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => <FontAwesome5 name="wallet" size={size} color={color} />,
-          tabBarLabel: 'Wallet',
-        }}
-      />
+        options={{ tabBarIcon: ({ color, size }) => <FontAwesome5 name="wallet" size={size} color={color} />, tabBarLabel: 'Wallet' }}
+      >
+        {(props) => <ScreenWithTopBar Component={WalletScreen} navigation={props.navigation} />}
+      </Tab.Screen>
 
-      {/* Botón central flotante: Scanner */}
       <Tab.Screen
         name="Scanner"
         component={ScannerScreen}
@@ -92,64 +159,67 @@ export default function AppTabs() {
 
       <Tab.Screen
         name="Map"
-        component={MapScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => <Ionicons name="map" size={size} color={color} />,
-          tabBarLabel: 'Map',
-        }}
-      />
+        options={{ tabBarIcon: ({ color, size }) => <Ionicons name="map" size={size} color={color} />, tabBarLabel: 'Map' }}
+      >
+        {(props) => <ScreenWithTopBar Component={MapScreen} navigation={props.navigation} />}
+      </Tab.Screen>
 
       <Tab.Screen
         name="Config"
-        component={ConfigScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => <Ionicons name="settings" size={size} color={color} />,
-          tabBarLabel: 'Config',
-        }}
-      />
+        options={{ tabBarIcon: ({ color, size }) => <Ionicons name="settings" size={size} color={color} />, tabBarLabel: 'Config' }}
+      >
+        {(props) => <ScreenWithTopBar Component={ConfigScreen} navigation={props.navigation} />}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 }
 
 // ----------------- STYLES -----------------
 const styles = StyleSheet.create({
-  tabBar: {
-  position: 'absolute',
-  bottom: 0,
-  left: 0,
-  right: 0,
-  height: 74,
-  borderTopWidth: 0,
-  elevation: 0,
-  backgroundColor: 'transparent',
-  alignItems: 'center',
-  justifyContent: 'center',
+  topBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    backgroundColor: '#002618ff',
+    borderBottomWidth: 0,
   },
- 
-  tabBarBg: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#121218',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    shadowColor: '#42b883',
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
+  profileSection: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatarCircle: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#42b883', justifyContent: 'center', alignItems: 'center' },
+  greeting: { fontSize: 15, fontWeight: '600', color: '#42b883', marginBottom: 2 },
+  rightSection: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  iconButton: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(66, 184, 131, 0.1)' },
+  badge: { position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: 4, backgroundColor: '#ff4444' },
+  supportButton: { flexDirection: 'row', backgroundColor: '#42b883', paddingHorizontal: 12, width: 'auto', gap: 6 },
+  supportText: { fontSize: 13, fontWeight: '600', color: '#0b0b0c' },
+
+  tabBar: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 74, borderTopWidth: 0, elevation: 0, backgroundColor: 'transparent', alignItems: 'center', justifyContent: 'center' },
+  tabBarBg: { ...StyleSheet.absoluteFillObject, backgroundColor: '#121218', borderTopLeftRadius: 20, borderTopRightRadius: 20, shadowColor: '#42b883', shadowOpacity: 0.18, shadowRadius: 12 },
+  scannerButton: { position: 'absolute', bottom: 20, alignSelf: 'center', width: 68, height: 68, borderRadius: 34, backgroundColor: '#42b883', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 10 },
+  
+  // Modal styles
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    backgroundColor: '#0b0b0c',
+    borderBottomWidth: 0,
   },
-  scannerButton: {
-  position: 'absolute',
-  bottom: 20,
-  alignSelf: 'center',
-  width: 68,
-  height: 68,
-  borderRadius: 34,
-  backgroundColor: '#42b883',
-  justifyContent: 'center',
-  alignItems: 'center',
-  shadowColor: '#000',
-  shadowOpacity: 0.3,
-  shadowRadius: 10,
-  shadowOffset: { width: 0, height: 5 },
-  elevation: 10,
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  closeButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(66, 184, 131, 0.1)',
   },
 });
 
@@ -158,4 +228,3 @@ const s = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '800', color: '#42b883', marginBottom: 6 },
   text: { fontSize: 14, color: '#42b883' },
 });
-
