@@ -1,7 +1,8 @@
 export type RootStackParamList = {
+  Splash: undefined;
   Login: undefined;
   AppTabs: undefined;
-  CrearUsuario: undefined; // ← Agregar esta línea
+  CrearUsuario: undefined;
 };
 
 export type TabParamList = {
