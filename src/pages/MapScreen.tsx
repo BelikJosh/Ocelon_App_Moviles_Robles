@@ -3,17 +3,16 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    Alert,
-    Platform,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    useWindowDimensions,
-    View,
+  Alert,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
 } from 'react-native';
 import MapView, { Callout, Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Spot = {
   id: string;
@@ -54,19 +53,18 @@ export default function MapScreen() {
 
   const mapRef = useRef<MapView>(null);
   const [region, setRegion] = useState<Region>({
-    latitude: 19.4326, // CDMX
+    latitude: 19.4326,
     longitude: -99.1332,
     latitudeDelta: 0.08,
     longitudeDelta: 0.08,
   });
   const [locating, setLocating] = useState(false);
-  const [headerH, setHeaderH] = useState(0); // medimos header
+  const [headerH, setHeaderH] = useState(0);
 
-  // Ajusta cámara a todos los spots al montar y cuando cambia el header/top inset
   useEffect(() => {
     fitAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [headerH, insets.top]);
+  }, [headerH]);
 
   const fitAll = useCallback(() => {
     if (!mapRef.current) return;
@@ -75,14 +73,14 @@ export default function MapScreen() {
 
     mapRef.current.fitToCoordinates(coords, {
       edgePadding: {
-        top: Math.ceil(insets.top + headerH + vs(10)),
-        right: hs(40),
+        top: Math.ceil(headerH + vs(10)),
+        right: hs(20),
         bottom: Math.ceil(insets.bottom + vs(120)),
-        left: hs(40),
+        left: hs(20),
       },
       animated: true,
     });
-  }, [hs, vs, headerH, insets.top, insets.bottom]);
+  }, [hs, vs, headerH, insets.bottom]);
 
   const goToMyLocation = useCallback(async () => {
     try {
@@ -109,37 +107,56 @@ export default function MapScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={s.container} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="light-content" backgroundColor="#0b0b0c" translucent={false} />
-
+    <View style={s.container}>
       {/* Header */}
       <View
         style={s.header}
         onLayout={(e) => setHeaderH(e.nativeEvent.layout.height)}
       >
         <View style={s.headerLeft}>
-          <View style={[s.headerIcon, { borderRadius: hs(12), marginRight: 10 }]}>
+          <View style={[s.headerIcon, { 
+            width: hs(40), 
+            height: hs(40), 
+            borderRadius: hs(12), 
+            marginRight: hs(10) 
+          }]}>
             <Ionicons name="map-outline" size={ms(20)} color="#42b883" />
           </View>
-          <View>
-            <Text style={[s.title, { fontSize: ms(20) }]}>Mapa de estacionamientos</Text>
-            <Text style={[s.subtitle, { fontSize: ms(12), marginTop: 2 }]}>Solo visualización de ubicaciones</Text>
+          <View style={{ flex: 1, marginRight: hs(8) }}>
+            <Text 
+              style={[s.title, { fontSize: ms(18) }]} 
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+            >
+              Mapa de estacionamientos
+            </Text>
+            <Text 
+              style={[s.subtitle, { fontSize: ms(11), marginTop: 2 }]}
+              numberOfLines={1}
+            >
+              Visualización de ubicaciones
+            </Text>
           </View>
         </View>
 
         <TouchableOpacity
           onPress={fitAll}
-          style={[s.badge, { paddingHorizontal: hs(10), paddingVertical: vs(6) }]}
+          style={[s.badge, { 
+            paddingHorizontal: hs(8), 
+            paddingVertical: vs(5),
+            minWidth: hs(80)
+          }]}
         >
-          <Ionicons name="resize-outline" size={ms(14)} color="#0b0b0c" />
-          <Text style={[s.badgeText, { fontSize: ms(12), marginLeft: 6 }]}>Ver todos</Text>
+          <Ionicons name="resize-outline" size={ms(12)} color="#0b0b0c" />
+          <Text style={[s.badgeText, { fontSize: ms(11), marginLeft: 4 }]}>Ver todos</Text>
         </TouchableOpacity>
       </View>
 
       <MapView
         ref={mapRef}
         style={s.map}
-        provider={PROVIDER_GOOGLE} // quítalo en iOS si no usas Google Maps
+        provider={PROVIDER_GOOGLE}
         initialRegion={region}
         customMapStyle={DARK_MAP_STYLE as any}
         onRegionChangeComplete={setRegion}
@@ -149,9 +166,8 @@ export default function MapScreen() {
         paddingAdjustmentBehavior="always"
         {...(Platform.OS === 'android'
           ? {
-              // Evita que controles/markers se oculten tras status/tab bars
               mapPadding: {
-                top: Math.ceil(insets.top + headerH),
+                top: Math.ceil(headerH),
                 right: 0,
                 bottom: Math.ceil(insets.bottom + vs(16)),
                 left: 0,
@@ -167,13 +183,26 @@ export default function MapScreen() {
             description={spot.description}
             tracksViewChanges={false}
           >
-            <View style={s.pin}>
+            <View style={[s.pin, { 
+              paddingVertical: vs(6), 
+              paddingHorizontal: hs(6),
+              borderRadius: hs(10) 
+            }]}>
               <Ionicons name="car-sport" size={ms(16)} color="#0b0b0c" />
             </View>
             <Callout tooltip>
-              <View style={s.callout}>
-                <Text style={s.calloutTitle}>{spot.title}</Text>
-                {!!spot.description && <Text style={s.calloutDesc}>{spot.description}</Text>}
+              <View style={[s.callout, { 
+                borderRadius: hs(12),
+                paddingVertical: vs(8),
+                paddingHorizontal: hs(10),
+                maxWidth: width * 0.7
+              }]}>
+                <Text style={[s.calloutTitle, { fontSize: ms(14) }]}>{spot.title}</Text>
+                {!!spot.description && (
+                  <Text style={[s.calloutDesc, { fontSize: ms(12), marginTop: 2 }]}>
+                    {spot.description}
+                  </Text>
+                )}
               </View>
             </Callout>
           </Marker>
@@ -181,15 +210,33 @@ export default function MapScreen() {
       </MapView>
 
       {/* FABs */}
-      <View style={[s.fabs, { bottom: Math.max(16, insets.bottom + 12) }]}>
-        <TouchableOpacity onPress={goToMyLocation} style={[s.fab, locating && { opacity: 0.7 }]}>
+      <View style={[s.fabs, { 
+        bottom: Math.max(vs(16), insets.bottom + vs(12)),
+        right: hs(16)
+      }]}>
+        <TouchableOpacity 
+          onPress={goToMyLocation} 
+          style={[s.fab, { 
+            width: hs(46), 
+            height: hs(46),
+            borderRadius: hs(14)
+          }, locating && { opacity: 0.7 }]}
+        >
           <Ionicons name="locate" size={ms(20)} color="#0b0b0c" />
         </TouchableOpacity>
-        <TouchableOpacity onPress={fitAll} style={[s.fab, { marginTop: 10 }]}>
+        <TouchableOpacity 
+          onPress={fitAll} 
+          style={[s.fab, { 
+            width: hs(46), 
+            height: hs(46),
+            borderRadius: hs(14),
+            marginTop: vs(10) 
+          }]}
+        >
           <Ionicons name="grid" size={ms(20)} color="#0b0b0c" />
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -197,16 +244,25 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0b0b0c' },
 
   header: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 8,
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center' },
+  headerLeft: { 
+    flexDirection: 'row', 
+    alignItems: 'center',
+    flex: 1,
+    minWidth: 0, // Permite que se contraiga si es necesario
+  },
   headerIcon: {
-    width: 40, height: 40, backgroundColor: '#121215', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: '#1f1f25',
+    backgroundColor: '#121215', 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    borderWidth: 1, 
+    borderColor: '#1f1f25',
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
       android: { elevation: 4 },
@@ -219,6 +275,7 @@ const s = StyleSheet.create({
     borderRadius: 999,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   badgeText: { color: '#0b0b0c', fontWeight: '800' },
 
@@ -226,34 +283,25 @@ const s = StyleSheet.create({
 
   pin: {
     backgroundColor: '#42b883',
-    paddingVertical: 6,
-    paddingHorizontal: 6,
-    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#1c744f',
   },
   callout: {
     backgroundColor: '#151518',
-    borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
     borderWidth: 1,
     borderColor: '#202028',
   },
   calloutTitle: { color: '#fff', fontWeight: '800' },
-  calloutDesc: { color: '#cfcfff', marginTop: 2 },
+  calloutDesc: { color: '#cfcfff' },
 
   fabs: {
     position: 'absolute',
-    right: 16,
-    // bottom se calcula con insets.bottom
     alignItems: 'flex-end',
   },
   fab: {
     backgroundColor: '#42b883',
-    width: 46, height: 46,
-    borderRadius: 14,
-    alignItems: 'center', justifyContent: 'center',
+    alignItems: 'center', 
+    justifyContent: 'center',
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
       android: { elevation: 5 },

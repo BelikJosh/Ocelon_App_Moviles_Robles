@@ -2,17 +2,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRoute } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    useWindowDimensions,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -29,8 +29,8 @@ type QrPayload = {
   from?: string;
 };
 
-const FINISH_SCHEME = 'ocelon://pay/finish';                  // opcional (compat)
-const FINISH_URL = 'http://10.49.122.204:3001/op/finish';    // el que usa el server
+const FINISH_SCHEME = 'ocelon://pay/finish';
+const FINISH_URL = 'http://10.49.122.204:3001/op/finish';
 const FINISH_PATH = '/op/finish';
 
 function shorten(s?: string, head = 14, tail = 8) {
@@ -52,22 +52,6 @@ function getInteractRef(url: string) {
     return m ? decodeURIComponent(m[1]) : '';
   }
 }
-function getFinishHash(url: string) {
-  try {
-    const u = new URL(url);
-    return u.searchParams.get('hash') || '';
-  } catch {
-    const m = url.match(/[?&]hash=([^&#]+)/);
-    return m ? decodeURIComponent(m[1]) : '';
-  }
-}
-
-export default function WalletScreen() {
-  const route = useRoute<any>();
-  const qr: QrPayload = route.params?.qr ?? {};
-  const webRef = useRef<WebView>(null);
-  const continuedRef = useRef(false); // evita doble finish
-  const finishingRef = useRef(false); // candado async
 function safeDecode(s?: string) {
   if (!s) return s;
   try { return decodeURIComponent(s); } catch { return s; }
@@ -81,6 +65,14 @@ function getFinishHash(url: string) {
     return m ? safeDecode(m[1]) : '';
   }
 }
+
+export default function WalletScreen() {
+  const route = useRoute<any>();
+  const qr: QrPayload = route.params?.qr ?? {};
+  const webRef = useRef<WebView>(null);
+  const continuedRef = useRef(false);
+  const finishingRef = useRef(false);
+
   // ====== Escalas responsivas ======
   const { width, height } = useWindowDimensions();
   const BASE_W = 375, BASE_H = 812;
@@ -136,32 +128,28 @@ function getFinishHash(url: string) {
   };
 
   const finalizePayment = useCallback(async (interact_ref: string, hash?: string) => {
-  if (finishingRef.current) return;        // ← evita dobles
-  finishingRef.current = true;
+    if (finishingRef.current) return;
+    finishingRef.current = true;
 
-  try {
-    console.log('[FINISH] flow:', JSON.stringify({ ...flow, interact_ref, hash }));
-    const { grantAccessToken } = await opApi.finishOutgoing({
-      incomingPaymentId: flow.incomingId!,
-      continueUri: flow.continueUri!,
-      continueAccessToken: flow.continueAccessToken!,
-      interact_ref,
-      hash, // puede ir vacío; se maneja en el backend
-    });
+    try {
+      console.log('[FINISH] flow:', JSON.stringify({ ...flow, interact_ref, hash }));
+      const { grantAccessToken } = await opApi.finishOutgoing({
+        incomingPaymentId: flow.incomingId!,
+        continueUri: flow.continueUri!,
+        continueAccessToken: flow.continueAccessToken!,
+        interact_ref,
+        hash,
+      });
 
-    // aquí ya tienes el grantAccessToken para “pago pendiente”
-    // cierra modal y muestra UI de “Pagar ahora”
-    setShowConsent(false);
-    setConsentUrl(null);
-    // guarda grantAccessToken en estado si lo necesitas para el botón “Pagar ahora”
-    // ...
-  } catch (e: any) {
-    console.log('[finishOutgoing error]', e);
-    Alert.alert('Finish error', e?.message || 'No se pudo finalizar');
-  } finally {
-    finishingRef.current = false;
-  }
-}, [flow]);
+      setShowConsent(false);
+      setConsentUrl(null);
+    } catch (e: any) {
+      console.log('[finishOutgoing error]', e);
+      Alert.alert('Finish error', e?.message || 'No se pudo finalizar');
+    } finally {
+      finishingRef.current = false;
+    }
+  }, [flow]);
 
   const pagarAhora = useCallback(async () => {
     try {
@@ -201,7 +189,7 @@ function getFinishHash(url: string) {
 
       setConsentUrl(redirectUrl);
       setShowConsent(true);
-      continuedRef.current = false; // reset del guard
+      continuedRef.current = false;
     } catch (e: any) {
       Alert.alert('Error', e?.message ?? 'No se pudo iniciar el pago');
       setFlow({});
@@ -262,7 +250,7 @@ function getFinishHash(url: string) {
   );
 
   return (
-    <SafeAreaView style={s.container}>
+    <View style={s.container}>
       <ScrollView contentContainerStyle={[s.scroll, { padding: PADDING }]} showsVerticalScrollIndicator={false} bounces>
         {/* Header */}
         <View style={[s.header, { maxWidth: MAX_W }]}>
@@ -405,7 +393,7 @@ function getFinishHash(url: string) {
         }}
         resizeMode="cover"
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -435,7 +423,7 @@ function DetailRow({
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0b0b0c' },
-  scroll: { alignItems: 'center', gap: 14, marginTop: 100 },
+  scroll: { alignItems: 'center', gap: 14 },
   header: { width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   headerIcon: {
