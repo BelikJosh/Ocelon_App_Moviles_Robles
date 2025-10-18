@@ -14,7 +14,8 @@ import { RootStackParamList } from './src/navegation/types/navigation';
 import AppTabs from './src/pages/AppTabs';
 import CrearUsuarioScreen from './src/pages/CrearUsuarioScreen';
 import LoginScreen from './src/pages/LoginScreen';
-import SplashScreen from './src/pages/SplashScreen';
+import SplashScreen from './src/pages/SplashScreen'; 
+
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -27,6 +28,7 @@ export default function App() {
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="AppTabs" component={AppTabs} />
       <Stack.Screen name="CrearUsuario" component={CrearUsuarioScreen} />
+      
     </Stack.Navigator>
   </NavigationContainer>
   );
