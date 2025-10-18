@@ -9,7 +9,6 @@ import {
   Image,
   Linking,
   Platform,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
@@ -18,6 +17,7 @@ import {
   View,
 } from 'react-native';
 import { DynamoDBService } from '../services/DynamoService'; // ⬅️ tu servicio real
+//import { TimerScreen } from './TimerScreen';
 
 
 const CURRENT_USER_ID = 'USER#1758339411234_5487';
@@ -70,29 +70,39 @@ export default function ScannerScreen() {
   const lastDataRef = useRef<string | null>(null);
 
   const onBarcodeScanned = useCallback(
-    async ({ data }: { data: string; type?: string }) => {
-      if (scanned || data === lastDataRef.current) return; // evita lecturas repetidas
-      lastDataRef.current = data;
+  async ({ data }: { data: string; type?: string }) => {
+    // Mecanismo anti-spam: Si ya se está procesando o si el código es el mismo que el anterior, salimos.
+    if (scanned || data === lastDataRef.current) return;
+    lastDataRef.current = data; // Guarda el código actual.
 
-      setScanned(true);
-      setLoading(true);
-      try {
-        // guarda el QR en Dynamo (campo "QR" del usuario actual)
-        await DynamoDBService.actualizarQRUsuario(CURRENT_USER_ID, data);
+    setScanned(true); // Bloquea el escáner (para evitar lecturas múltiples)
+    setLoading(true); // Muestra el indicador de carga (esto lo podemos dejar o quitar)
+    
+    try {
+      // ❌ COMENTAR O ELIMINAR: Guardar el QR en Dynamo
+      // await DynamoDBService.actualizarQRUsuario(CURRENT_USER_ID, data);
 
-        const parsed = parseOpenPaymentPayload(data);
-        navigation.navigate('Wallet', { qr: parsed });
-      } catch (e) {
-        console.error(e);
-        Alert.alert('Error', 'No se pudo guardar el QR. Intenta de nuevo.');
-        lastDataRef.current = null; // permite reintentar
-      } finally {
-        setLoading(false);
-        setTimeout(() => setScanned(false), 600);
-      }
-    },
-    [scanned, navigation]
-  );
+      // ❌ COMENTAR O ELIMINAR: Parsear (procesar) el código QR
+      // const parsed = parseOpenPaymentPayload(data);
+      
+      // ✅ NAVEGACIÓN SIMPLIFICADA: 
+      // Mandamos la data sin procesar a una nueva pantalla.
+      // (Asumo que la quieres mandar a 'DetalleQR' o similar para validar después)
+      navigation.navigate('Timer', { rawQrData: data }); // 👈 CAMBIA 'Wallet' por tu nueva pantalla y 'qr' por un nombre simple.
+      console.log(data);
+    } catch (e) {
+      // El manejo de errores ya no será por la DB, pero lo dejamos por si acaso.
+      console.error(e);
+      Alert.alert('Error', 'Hubo un error al procesar el escaneo.');
+      lastDataRef.current = null;
+    } finally {
+      // Estos pasos son importantes para reactivar el escáner.
+      setLoading(false); 
+      setTimeout(() => setScanned(false), 600);
+    }
+  },
+  [scanned, navigation]
+);
 
   let content: React.ReactNode = null;
 
@@ -138,7 +148,7 @@ export default function ScannerScreen() {
         />
 
         {/* Overlay superior con logo + título */}
-        <View style={[styles.topOverlay, { paddingHorizontal: hs(14), paddingVertical: vs(10), marginTop:50 }]}>
+        <View style={[styles.topOverlay, { paddingHorizontal: hs(14), paddingVertical: vs(10), marginTop: 50 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Image
               source={require('../../assets/images/Logo_ocelon.jpg')}
@@ -187,10 +197,10 @@ export default function ScannerScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <View style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="light-content" backgroundColor="#000" translucent={false} />
       {content}
-    </SafeAreaView>
+    </View>
   );
 }
 
