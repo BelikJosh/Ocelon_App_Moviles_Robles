@@ -91,6 +91,7 @@ export default function MapScreen() {
   const lastCoordRef = useRef<{ lat: number; lon: number } | null>(null);
   const lastHeadingRef = useRef<number | null>(null);
   const lastCamUpdateRef = useRef<number>(0);
+  const isCameraAnimating = useRef(false);
 
   // estado
   const [region, setRegion] = useState<Region>({
@@ -103,6 +104,9 @@ export default function MapScreen() {
   const [userLoc, setUserLoc] = useState<{ latitude: number; longitude: number } | null>(null);
   const [parked, setParked] = useState<Parked | null>(null);
   const [routeInfo, setRouteInfo] = useState<{ distanceKm: number; durationMin: number } | null>(null);
+
+  // Nuevo estado para control 3D
+  const [is3DEnabled, setIs3DEnabled] = useState(false); // Iniciar en 2D para evitar problemas
 
   // Solo este screen permite landscape
   useFocusEffect(
@@ -133,12 +137,17 @@ export default function MapScreen() {
       return;
     }
     if (userLoc) {
-      mapRef.current.animateCamera({ center: userLoc, zoom: 16 }, { duration: 400 });
+      // Aplicar vista cuando se centra en el usuario
+      mapRef.current.animateCamera({ 
+        center: userLoc, 
+        zoom: 16,
+        pitch: is3DEnabled ? 45 : 0,
+      }, { duration: 400 });
       return;
     }
     const coords = PARKING_SPOTS.map((s) => ({ latitude: s.latitude, longitude: s.longitude }));
     if (coords.length) mapRef.current.fitToCoordinates(coords, { edgePadding: edge, animated: true });
-  }, [userLoc, parked, insets.top, insets.bottom, isLandscape, hs, vs]);
+  }, [userLoc, parked, insets.top, insets.bottom, isLandscape, hs, vs, is3DEnabled]);
 
   useEffect(() => {
     const sub = Dimensions.addEventListener('change', () => requestAnimationFrame(() => fitContextual()));
@@ -160,6 +169,19 @@ export default function MapScreen() {
     })();
   }, []);
 
+  // Función para animar cámara de forma segura
+  const safeAnimateCamera = useCallback((config: any, options?: { duration: number }) => {
+    if (!mapRef.current || isCameraAnimating.current) return;
+    
+    isCameraAnimating.current = true;
+    mapRef.current.animateCamera(config, options);
+    
+    // Usar timeout en lugar de then() para evitar el error
+    setTimeout(() => {
+      isCameraAnimating.current = false;
+    }, options?.duration || 350);
+  }, []);
+
   // Primer fix de precisión alta y watch balanceado + seguir cámara
   useFocusEffect(
     React.useCallback(() => {
@@ -173,7 +195,13 @@ export default function MapScreen() {
         });
         const me = { latitude: first.coords.latitude, longitude: first.coords.longitude };
         setUserLoc(me);
-        mapRef.current?.animateCamera({ center: me, zoom: 16 }, { duration: 500 });
+        
+        // Aplicar vista inicial
+        safeAnimateCamera({ 
+          center: me, 
+          zoom: 16,
+          pitch: is3DEnabled ? 45 : 0,
+        }, { duration: 500 });
 
         watchRef.current = await Location.watchPositionAsync(
           {
@@ -185,7 +213,7 @@ export default function MapScreen() {
             const next = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
             setUserLoc(next);
 
-            if (followMe && mapRef.current) {
+            if (followMe && mapRef.current && !isCameraAnimating.current) {
               const now = Date.now();
               const movedEnough =
                 !lastCoordRef.current ||
@@ -196,15 +224,16 @@ export default function MapScreen() {
                 (lastHeadingRef.current === null || Math.abs(heading - lastHeadingRef.current) > 8);
 
               if ((movedEnough || headingChanged) && now - lastCamUpdateRef.current > 400) {
-                mapRef.current.animateCamera(
+                safeAnimateCamera(
                   {
                     center: next,
                     zoom: 17,
                     heading: heading ?? undefined,
-                    pitch: 40,
+                    pitch: is3DEnabled ? 40 : 0,
                   },
                   { duration: 350 }
                 );
+                
                 lastCamUpdateRef.current = now;
                 lastCoordRef.current = { lat: next.latitude, lon: next.longitude };
                 if (heading !== null) lastHeadingRef.current = heading;
@@ -218,7 +247,7 @@ export default function MapScreen() {
         watchRef.current?.remove();
         watchRef.current = null;
       };
-    }, [followMe])
+    }, [followMe, is3DEnabled, safeAnimateCamera])
   );
 
   useEffect(() => {
@@ -243,13 +272,19 @@ export default function MapScreen() {
       };
       setRegion(next);
       setUserLoc({ latitude: next.latitude, longitude: next.longitude });
-      mapRef.current?.animateToRegion(next, 600);
+      
+      // Aplicar vista al ir a mi ubicación
+      safeAnimateCamera({
+        center: next,
+        zoom: 16,
+        pitch: is3DEnabled ? 45 : 0,
+      }, { duration: 600 });
     } catch {
       Alert.alert('Ups', 'No se pudo obtener tu ubicación.');
     } finally {
       setLocating(false);
     }
-  }, []);
+  }, [is3DEnabled, safeAnimateCamera]);
 
   const saveParkedLocation = useCallback(async () => {
     try {
@@ -263,15 +298,19 @@ export default function MapScreen() {
       await AsyncStorage.setItem(PARKED_KEY, JSON.stringify(p));
       setParked(p);
       setFollowMe(false); // evita que salte la cámara al guardar
-      mapRef.current?.animateToRegion(
-        { latitude: p.latitude, longitude: p.longitude, latitudeDelta: 0.012, longitudeDelta: 0.012 },
-        500
-      );
+      
+      // Aplicar vista al guardar ubicación
+      safeAnimateCamera({
+        latitude: p.latitude,
+        longitude: p.longitude,
+        zoom: 16,
+        pitch: is3DEnabled ? 45 : 0,
+      }, { duration: 500 });
       Alert.alert('Guardado', 'Ubicación del auto guardada.');
     } catch {
       Alert.alert('Ups', 'No se pudo guardar tu ubicación.');
     }
-  }, []);
+  }, [is3DEnabled, safeAnimateCamera]);
 
   const clearParked = useCallback(async () => {
     await AsyncStorage.removeItem(PARKED_KEY);
@@ -294,6 +333,19 @@ export default function MapScreen() {
     Linking.openURL(webUrl);
   }, [parked]);
 
+  const toggle3DView = useCallback(() => {
+    const new3DState = !is3DEnabled;
+    setIs3DEnabled(new3DState);
+    
+    if (userLoc && mapRef.current) {
+      safeAnimateCamera({
+        center: userLoc,
+        zoom: 16,
+        pitch: new3DState ? 45 : 0,
+      }, { duration: 500 });
+    }
+  }, [userLoc, is3DEnabled, safeAnimateCamera]);
+
   /* ===== lógica de ruta: evitar pedir Directions cuando estás pegado ===== */
   const userIsNear =
     !!(userLoc && parked) &&
@@ -304,11 +356,19 @@ export default function MapScreen() {
 
   return (
     <View style={s.container}>
-      {/* Botón chip “Ajustar vista” (header grande fue eliminado) */}
+      {/* Botón chip "Ajustar vista" */}
       <View style={[s.topChipWrap, { top: Math.max(vs(8), insets.top + vs(4)), left: hs(10) }]}>
         <TouchableOpacity onPress={fitContextual} style={s.badge}>
           <Ionicons name="resize-outline" size={ms(12)} color="#0b0b0c" />
           <Text style={[s.badgeText, { marginLeft: 6 }]}>Ajustar vista</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Botón para alternar vista 3D/2D */}
+      <View style={[s.topChipWrap, { top: Math.max(vs(8), insets.top + vs(4)), right: hs(10) }]}>
+        <TouchableOpacity onPress={toggle3DView} style={[s.badge, { backgroundColor: is3DEnabled ? '#7ad3ff' : '#42b883' }]}>
+          <Ionicons name={is3DEnabled ? "cube" : "cube-outline"} size={ms(12)} color="#0b0b0c" />
+          <Text style={[s.badgeText, { marginLeft: 6 }]}>{is3DEnabled ? '3D' : '2D'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -324,6 +384,12 @@ export default function MapScreen() {
         toolbarEnabled={false}
         paddingAdjustmentBehavior="always"
         onTouchStart={() => setFollowMe(false)} // si tocas el mapa, pausamos seguimiento
+        
+        // Props para vista 3D - sin la prop camera que causa conflicto
+        showsBuildings={is3DEnabled}
+        showsIndoors={false}
+        showsTraffic={false}
+        
         {...(Platform.OS === 'android'
           ? { mapPadding: { top: 0, right: 0, bottom: Math.ceil(insets.bottom + vs(isLandscape ? 6 : 10)), left: 0 } }
           : {})}
@@ -449,7 +515,7 @@ export default function MapScreen() {
         )}
       </View>
 
-      {/* FAB derecho: “Seguir” / centrar mi posición */}
+      {/* FAB derecho: "Seguir" / centrar mi posición */}
       <View
         style={[
           s.fabs,
@@ -460,7 +526,11 @@ export default function MapScreen() {
           onPress={() => {
             setFollowMe(true);
             if (userLoc && mapRef.current) {
-              mapRef.current.animateCamera({ center: userLoc, zoom: 17 }, { duration: 300 });
+              safeAnimateCamera({ 
+                center: userLoc, 
+                zoom: 17,
+                pitch: is3DEnabled ? 40 : 0,
+              }, { duration: 300 });
             } else {
               goToMyLocation();
             }
