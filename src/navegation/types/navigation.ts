@@ -3,6 +3,7 @@ export type RootStackParamList = {
   Login: undefined;
   AppTabs: undefined;
   CrearUsuario: undefined;
+  IniciarSesion: undefined;
 };
 
 export type TabParamList = {

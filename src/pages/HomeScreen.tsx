@@ -7,14 +7,18 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   useWindowDimensions,
   View
 } from 'react-native';
 
+// Importa tu hook de autenticación o estado de usuario
+// import { useAuth } from '../hooks/useAuth';
+
 const BASE_W = 375;
 const BASE_H = 812;
 
-export default function HomeScreen() {
+export default function HomeScreen({ navigation }: any) {
   const { width, height } = useWindowDimensions();
 
   // Escalas responsivas
@@ -36,8 +40,51 @@ export default function HomeScreen() {
     setTimeout(() => setRefreshing(false), 800);
   }, []);
 
+  // Estado para simular usuario invitado - reemplaza con tu lógica real
+  const [esUsuarioInvitado] = useState(true); // Cambia a false para probar usuario logueado
+
+  // Manejar press en icono de usuario
+  const handleUserIconPress = () => {
+    if (esUsuarioInvitado) {
+      // Si es usuario invitado, navegar a la pantalla de iniciar sesión
+      navigation.navigate('IniciarSesion');
+    } else {
+      // Si es usuario logueado, navegar al perfil
+      // navigation.navigate('Perfil');
+      console.log('Navegar a perfil de usuario');
+    }
+  };
+
   return (
     <View style={s.container}>
+      {/* Header con icono de usuario */}
+      <View style={[s.header, { paddingHorizontal: PADDING, paddingTop: vs(40) }]}>
+        <View style={s.headerLeft}>
+          {/* Espacio para balancear el header */}
+        </View>
+        
+        <View style={s.headerCenter}>
+          <Text style={[s.headerTitle, { fontSize: ms(18) }]}>Inicio</Text>
+        </View>
+        
+        <View style={s.headerRight}>
+          <TouchableOpacity 
+            onPress={handleUserIconPress}
+            style={[s.userButton, { 
+              width: hs(40), 
+              height: hs(40),
+              borderRadius: hs(20)
+            }]}
+          >
+            <Ionicons 
+              name="person-outline" 
+              size={ms(22)} 
+              color={esUsuarioInvitado ? "#9aa0a6" : "#42b883"} 
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <ScrollView
         contentContainerStyle={{
           flexGrow: 1,
@@ -68,7 +115,7 @@ export default function HomeScreen() {
               shadowRadius: 12,
               shadowOffset: { width: 0, height: 8 },
               elevation: 10,
-              marginTop: vs(24),
+              marginTop: vs(10), // Reducido porque ahora hay header
               marginBottom: vs(16),
             }}
           >
@@ -216,10 +263,56 @@ function FeatureCard({
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0b0b0c' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  kicker: { color: '#9f9faf', letterSpacing: 0.5 },
-  title: { color: '#ffffff', fontWeight: '800' },
-  subtitle: { color: '#c9c9cf' },
-  footer: { color: '#85859a' },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#0b0b0c' 
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingVertical: 10,
+  },
+  headerLeft: {
+    width: 40, // Mismo ancho que el botón derecho para balance
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerRight: {
+    width: 40,
+    alignItems: 'flex-end',
+  },
+  headerTitle: {
+    color: '#ffffff',
+    fontWeight: '600',
+  },
+  userButton: {
+    backgroundColor: '#1b1b20',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#2a2a30',
+  },
+  center: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  kicker: { 
+    color: '#9f9faf', 
+    letterSpacing: 0.5 
+  },
+  title: { 
+    color: '#ffffff', 
+    fontWeight: '800' 
+  },
+  subtitle: { 
+    color: '#c9c9cf' 
+  },
+  footer: { 
+    color: '#85859a' 
+  },
 });

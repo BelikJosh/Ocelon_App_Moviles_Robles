@@ -60,12 +60,27 @@ function ScreenWithTopBar({ Component, navigation }: { Component: any; navigatio
   const insets = useSafeAreaInsets();
   const [showSupport, setShowSupport] = useState(false);
   
+  // Estado para simular usuario invitado - reemplaza con tu lógica real
+  const [esUsuarioInvitado] = useState(true); // Cambia a false para probar usuario logueado
+
+  // Manejar press en perfil
+  const handleProfilePress = () => {
+    if (esUsuarioInvitado) {
+      // Si es usuario invitado, navegar a la pantalla de iniciar sesión
+      navigation.navigate('IniciarSesion');
+    } else {
+      // Si es usuario logueado, navegar al perfil
+      console.log('Navegar a perfil de usuario');
+      // navigation.navigate('Perfil');
+    }
+  };
+
   return (
     <>
       <View style={{ flex: 1, backgroundColor: '#0b0b0c' }}>
         <TopBar 
-          userName="Puchito"
-          onPressProfile={() => console.log('ProfileScreen')}
+          userName={esUsuarioInvitado ? "Invitado" : "Puchito"}
+          onPressProfile={handleProfilePress}
           onPressNotifications={() => console.log('NotifScreen')}
           onPressSupport={() => setShowSupport(true)}
         />

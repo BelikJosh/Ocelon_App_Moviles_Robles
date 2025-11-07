@@ -13,23 +13,27 @@ import { RootStackParamList } from './src/navegation/types/navigation';
 
 import AppTabs from './src/pages/AppTabs';
 import CrearUsuarioScreen from './src/pages/CrearUsuarioScreen';
+import IniciarSesionScreen from './src/pages/IniciarSesionScreen'; // ← Importar la nueva pantalla
 import LoginScreen from './src/pages/LoginScreen';
-import SplashScreen from './src/pages/SplashScreen'; 
-
+import SplashScreen from './src/pages/SplashScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   return (
-  <NavigationContainer>
-    <StatusBar style="light" />
-    <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Splash" component={SplashScreen} />
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="AppTabs" component={AppTabs} />
-      <Stack.Screen name="CrearUsuario" component={CrearUsuarioScreen} />
-      
-    </Stack.Navigator>
-  </NavigationContainer>
+    <NavigationContainer>
+      <StatusBar style="light" />
+      <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Splash" component={SplashScreen} />
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="AppTabs" component={AppTabs} />
+        <Stack.Screen name="CrearUsuario" component={CrearUsuarioScreen} />
+        <Stack.Screen 
+          name="IniciarSesion" 
+          component={IniciarSesionScreen}
+          options={{ title: 'Iniciar Sesión', headerShown: false }}
+        />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
