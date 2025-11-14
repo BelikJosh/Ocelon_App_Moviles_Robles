@@ -10,7 +10,8 @@ import HomeScreen from './HomeScreen';
 import MapScreen from './MapScreen';
 import ScannerScreen from './ScannerScreen';
 import SupportScreen from './SupportScreen';
-import WalletScreen from './WalletScreen';
+import WalletStack from './WalletStack';
+import TimerScreen from './TimerScreen';
 
 // ----------------- TOP BAR -----------------
 interface TopBarProps {
@@ -145,18 +146,27 @@ export default function AppTabs() {
         name="Wallet"
         options={{ tabBarIcon: ({ color, size }) => <FontAwesome5 name="wallet" size={size} color={color} />, tabBarLabel: 'Wallet' }}
       >
-        {(props) => <ScreenWithTopBar Component={WalletScreen} navigation={props.navigation} />}
+        {(props) => <ScreenWithTopBar Component={WalletStack} navigation={props.navigation} />}
       </Tab.Screen>
 
       <Tab.Screen
         name="Scanner"
         component={ScannerScreen}
         options={{
+          headerShown: false,
           tabBarLabel: '',
           tabBarButton: (props) => <ScannerTabButton {...props} />,
         }}
       />
-
+      <Tab.Screen
+        name="Timer"
+        component={TimerScreen}
+        options={{
+          headerShown: false,
+          tabBarLabel: '',
+          tabBarButton: (props) => <TimerScreen {...props} />,
+        }}
+      />
       <Tab.Screen
         name="Map"
         options={{ tabBarIcon: ({ color, size }) => <Ionicons name="map" size={size} color={color} />, tabBarLabel: 'Map' }}
