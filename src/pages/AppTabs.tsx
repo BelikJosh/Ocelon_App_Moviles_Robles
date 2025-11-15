@@ -10,7 +10,7 @@ import HomeScreen from './HomeScreen';
 import MapScreen from './MapScreen';
 import ScannerScreen from './ScannerScreen';
 import SupportScreen from './SupportScreen';
-import WalletStack from './WalletStack';
+//import WalletStack from './WalletStack';
 import TimerScreen from './TimerScreen';
 
 // ----------------- TOP BAR -----------------
