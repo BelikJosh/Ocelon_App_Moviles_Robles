@@ -1,23 +1,25 @@
-// TimerScreen.tsx
-import React, { useCallback, useState, useEffect } from 'react';
+// screens/TimerScreen.tsx - VERSIÓN SIMPLIFICADA
+import { Ionicons } from '@expo/vector-icons';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
+    TouchableOpacity,
     useWindowDimensions,
     View,
-    TouchableOpacity,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { RootStackParamList } from '../navigation/types/navigation';
+import { getTimer, onTimerChange, startTimer, stopTimer } from '../utils/TimerStore'; // ← QUITAR updateTimer
+
+type Props = NativeStackScreenProps<RootStackParamList, 'Timer'>;
 
 const BASE_W = 375;
 const BASE_H = 812;
 
-export default function TimerScreen() {
-    const navigation = useNavigation();
-    const route = useRoute();
-    
+export default function TimerScreen({ route, navigation }: Props) {
     // --- LÓGICA DE LA PLANTILLA (Responsiva) ---
     const { width, height } = useWindowDimensions();
     const hs = (size: number) => (width / BASE_W) * size;
@@ -31,55 +33,26 @@ export default function TimerScreen() {
     const MAX_W = 720;
     // ---------------------------------------------
     
-    // --- NUEVOS ESTADOS DE TIEMPO Y FASE ---
-    const [phase, setPhase] = useState<'COUNTDOWN' | 'STOPWATCH'>('COUNTDOWN'); // Controla qué timer se muestra
-    const [countdown, setCountdown] = useState(10); // Inicia la cuenta regresiva en 5
-    const [mainTimerSeconds, setMainTimerSeconds] = useState(0); // Cronómetro (Stopwatch)
-    const [secondaryCounter, setSecondaryCounter] = useState(0); // Contador que sube cada 10s
-    
-    const rawQrData = (route.params as { rawQrData: string | undefined })?.rawQrData || 'Error: QR no encontrado';
+    // --- ESTADOS SINCRONIZADOS CON EL STORE ---
+    const [storeData, setStoreData] = useState(getTimer());
+    const rawQrData = route.params?.rawQrData || storeData.rawQrData;
 
-    // --- EFECTO 1: CUENTA REGRESIVA (5 -> 0) ---
+    // Sincronizar con el store
     useEffect(() => {
-        if (phase !== 'COUNTDOWN') return;
-        
-        const countdownInterval = setInterval(() => {
-            setCountdown(prev => {
-                if (prev <= 1) {
-                    clearInterval(countdownInterval);
-                    setPhase('STOPWATCH'); // 🎯 Transición al Cronómetro
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
-        
-        return () => clearInterval(countdownInterval);
-    }, [phase]);
+        const unsub = onTimerChange(() => setStoreData({ ...getTimer() }));
+        return unsub;
+    }, []);
 
-    // --- EFECTO 2: CRONÓMETRO Y CONTADOR SECUNDARIO ---
+    // Iniciar timer si viene de QR
     useEffect(() => {
-        if (phase !== 'STOPWATCH') return;
-        
-        const timerInterval = setInterval(() => {
-            setMainTimerSeconds(s => {
-                const nextS = s + 1;
-                
-                // Lógica del contador secundario: aumenta  cada 10 segundos
-                if (nextS > 0 && nextS % 10 === 0) {
-                    setSecondaryCounter(c => c + 15);
-                }
-                return nextS;
-            });
-        }, 1000);
-        
-        return () => clearInterval(timerInterval);
-    }, [phase]);
-    // ---------------------------------------------------
+        if (route.params?.rawQrData && !storeData.active) {
+            startTimer(route.params.rawQrData);
+        }
+    }, [route.params?.rawQrData]);
+
+    // ← ELIMINAR TODOS LOS USEEFFECTS DEL TIMER - ahora están en el store
     
     // --- LÓGICA DE UTILIDAD ---
-    
-    // FUNCIÓN PARA FORMATEAR EL CRONÓMETRO (HH:MM:SS)
     const formatTime = (totalSeconds: number) => {
         const hrs = Math.floor(totalSeconds / 3600);
         const mins = Math.floor((totalSeconds % 3600) / 60);
@@ -88,36 +61,35 @@ export default function TimerScreen() {
         return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
     };
     
-    // FUNCIÓN PARA REGRESAR
     const handleGoBack = () => {
-        setPhase('COUNTDOWN'); // Asegura que los efectos se detengan
-        navigation.goBack(); 
+        // Solo navegar hacia atrás, no detener el timer
+        navigation.goBack();
+    };
+
+    const handleStopTimer = () => {
+        stopTimer();
+        navigation.goBack();
     };
     
-    // LÓGICA DEL PULL TO REFRESH (Mantenida)
     const [refreshing, setRefreshing] = useState(false);
     const onRefresh = useCallback(() => {
         setRefreshing(true);
-        // Reiniciar timers al refrescar si es necesario
-        // setPhase('COUNTDOWN'); 
-        // setCountdown(5);
-        // setMainTimerSeconds(0);
-        // setSecondaryCounter(0);
+        // Reiniciar completamente
+        if (storeData.active) {
+            stopTimer();
+        }
         setTimeout(() => setRefreshing(false), 800);
-    }, []);
+    }, [storeData.active]);
     // ---------------------------------------------------
 
-    // --- RENDERIZADO ---
-    
     // Determina el texto principal y la etiqueta a mostrar
-    const mainText = phase === 'COUNTDOWN' 
-        ? countdown 
-        : formatTime(mainTimerSeconds);
+    const mainText = storeData.phase === 'COUNTDOWN' 
+        ? storeData.countdown 
+        : formatTime(storeData.seconds);
     
-    const mainLabel = phase === 'COUNTDOWN' 
+    const mainLabel = storeData.phase === 'COUNTDOWN' 
         ? `Tiempo libre restante` 
         : 'Tiempo Transcurrido (HH:MM:SS)';
-
 
     return (
         <View style={s.container}>
@@ -136,72 +108,92 @@ export default function TimerScreen() {
             >
                 <View style={{ width: '100%', alignItems: 'center', flex: 1, justifyContent: 'center' }}>
                     
+                    {/* Header */}
+                    <View style={[s.header, { marginBottom: vs(20) }]}>
+                        <TouchableOpacity 
+                            style={s.backButton} 
+                            onPress={handleGoBack}
+                        >
+                            <Ionicons name="arrow-back" size={24} color="#42b883" />
+                        </TouchableOpacity>
+                        <Text style={[s.headerTitle, { fontSize: ms(20) }]}>
+                            Temporizador de Estacionamiento
+                        </Text>
+                        <View style={s.headerPlaceholder} />
+                    </View>
+
                     {/* Contenedor Principal del Tiempo (Círculo) */}
                     <View
                         style={[s.timerCircle, {
                             width: LOGO_TIMER,
                             height: LOGO_TIMER,
                             borderRadius: LOGO_TIMER / 2,
-                            marginTop: vs(24),
                             marginBottom: vs(16),
-                            // El color del texto principal cambia según la fase
-                            borderColor: phase === 'COUNTDOWN' ? '#ffaa00' : '#2a2a30', 
+                            borderColor: storeData.phase === 'COUNTDOWN' ? '#ffaa00' : '#42b883', 
                         }]}
                     >
                         <Text style={[
                             s.timerText, 
                             { 
-                                fontSize: phase === 'COUNTDOWN' ? ms(50) : ms(40), // 
-                                fontWeight: phase === 'COUNTDOWN' ? '800' : '500',
-                                color: phase === 'COUNTDOWN' ? '#68d59dff' : '#42b883',
+                                fontSize: storeData.phase === 'COUNTDOWN' ? ms(50) : ms(36),
+                                fontWeight: storeData.phase === 'COUNTDOWN' ? '800' : '600',
+                                color: storeData.phase === 'COUNTDOWN' ? '#ffaa00' : '#42b883',
                             }
                         ]}>
                             {mainText}
                         </Text>
-                        <Text style={[s.subtitle, { fontSize: ms(16), alignSelf:'center' }]}>
+                        <Text style={[s.timerLabel, { fontSize: ms(14) }]}>
                             {mainLabel}
                         </Text>
                     </View>
 
-                    {/* Título y Data del QR */}
-                    <View style={{ maxWidth: MAX_W, width: '100%', alignItems: 'center' }}>
-                        <Text style={[s.kicker, { fontSize: ms(14), marginBottom: vs(6) }]}>
-                            Datos Escaneados (para pruebas):
+                    {/* Información del QR */}
+                    <View style={[s.qrCard, { maxWidth: MAX_W, borderRadius: CARD_RADIUS, padding: hs(16) }]}>
+                        <Text style={[s.qrTitle, { fontSize: ms(16) }]}>
+                            Datos del QR Escaneado
                         </Text>
-                        <Text
-                            style={[s.title, { fontSize: ms(20), lineHeight: ms(28), marginBottom: vs(16), textAlign: 'center' }]}
-                        >
-                            <Text style={{ color: '#42b883' }}>{rawQrData.substring(0, 25)}</Text>
-                            {rawQrData.length > 25 ? '...' : ''}
-                        </Text>
-                        
-                        {/* 🎯 CONTADOR SECUNDARIO */}
-                        <View style={s.secondaryCounterBox}>
-                            <Text style={[s.timerText, { fontSize: ms(18), color: '#c9c9cf' }]}>
-                                MXN {secondaryCounter}
-                            </Text>
-                            <Text style={[s.subtitle, { fontSize: ms(13) }]}>
-                                Costo Total
-                            </Text>
-                            <Text style={[s.subtitle, { fontSize: ms(10) }]}>
-                                Ajustado a 15 pesos por 10 segundos para pruebas.
+                        <View style={s.qrDataContainer}>
+                            <Text style={[s.qrData, { fontSize: ms(12) }]} numberOfLines={3}>
+                                {rawQrData}
                             </Text>
                         </View>
                     </View>
+                        
+                    {/* Contador de Costo */}
+                    <View style={[s.costCard, { maxWidth: MAX_W, borderRadius: CARD_RADIUS, padding: hs(16) }]}>
+                        <View style={s.costHeader}>
+                            <Ionicons name="cash-outline" size={ms(20)} color="#42b883" />
+                            <Text style={[s.costTitle, { fontSize: ms(18) }]}>
+                                Costo Total
+                            </Text>
+                        </View>
+                        <Text style={[s.costAmount, { fontSize: ms(32) }]}>
+                            MXN {storeData.cost}.00
+                        </Text>
+                        <Text style={[s.costSubtitle, { fontSize: ms(12) }]}>
+                            $15.00 MXN por cada 10 segundos
+                        </Text>
+                    </View>
                     
-                    {/* Botón de Regreso */}
+                    {/* Botón de Detener Timer */}
                     <TouchableOpacity
-                        style={[s.primaryBtn, { paddingVertical: vs(16), borderRadius: CARD_RADIUS, marginTop: vs(40), marginBottom: vs(24) }]}
-                        onPress={handleGoBack}
+                        style={[s.primaryBtn, { 
+                            borderRadius: CARD_RADIUS, 
+                            paddingVertical: vs(16),
+                            marginTop: vs(20),
+                            marginBottom: vs(24) 
+                        }]}
+                        onPress={handleStopTimer}
                     >
+                        <Ionicons name="stop-circle-outline" size={ms(20)} color="#0b0b0c" />
                         <Text style={[s.btnText, { fontSize: ms(16) }]}>
-                            Terminar y Regresar
+                            Detener Timer
                         </Text>
                     </TouchableOpacity>
                     
                     {/* Footer */}
                     <Text style={[s.footer, { fontSize: ms(12) }]}>
-                        © {new Date().getFullYear()} Ocelon — Escaneo QR
+                        © {new Date().getFullYear()} Ocelon — Sistema de Estacionamiento
                     </Text>
                 </View>
             </ScrollView>
@@ -209,47 +201,113 @@ export default function TimerScreen() {
     );
 }
 
+// Los styles se mantienen igual (sin cambios)...
 const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#0b0b0c' },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    kicker: { color: '#9f9faf', letterSpacing: 0.5 },
-    title: { color: '#ffffff', fontWeight: '800' },
-    subtitle: { color: '#c9c9cf' },
-    footer: { color: '#85859a' },
-    
-    // Estilos principales del timer
-    timerText: { color: '#42b883' },
+    header: {
+        width: '100%',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    backButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(66, 184, 131, 0.1)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    headerTitle: {
+        color: '#fff',
+        fontWeight: '700',
+        textAlign: 'center',
+        flex: 1,
+    },
+    headerPlaceholder: {
+        width: 40,
+    },
     timerCircle: {
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#121215',
-        borderWidth: 2,
-        borderColor: '#2a2a30',
+        borderWidth: 3,
         shadowColor: '#000',
         shadowOpacity: 0.35,
         shadowRadius: 12,
         shadowOffset: { width: 0, height: 8 },
         elevation: 10,
     },
-    
-    // Estilos para el botón y el contador secundario
+    timerText: {
+        fontWeight: '700',
+    },
+    timerLabel: {
+        color: '#c9c9cf',
+        marginTop: 8,
+        textAlign: 'center',
+    },
+    qrCard: {
+        width: '100%',
+        backgroundColor: '#151518',
+        borderWidth: 1,
+        borderColor: '#202028',
+        marginBottom: 16,
+    },
+    qrTitle: {
+        color: '#fff',
+        fontWeight: '600',
+        marginBottom: 12,
+    },
+    qrDataContainer: {
+        backgroundColor: '#1b1b20',
+        borderRadius: 8,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: '#2a2a30',
+    },
+    qrData: {
+        color: '#a9a9b3',
+        fontFamily: 'monospace',
+    },
+    costCard: {
+        width: '100%',
+        backgroundColor: '#131318',
+        borderWidth: 1,
+        borderColor: '#202028',
+        alignItems: 'center',
+    },
+    costHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 12,
+    },
+    costTitle: {
+        color: '#fff',
+        fontWeight: '600',
+    },
+    costAmount: {
+        color: '#42b883',
+        fontWeight: '700',
+        marginBottom: 8,
+    },
+    costSubtitle: {
+        color: '#9f9faf',
+        textAlign: 'center',
+    },
     primaryBtn: {
         backgroundColor: '#42b883',
         paddingHorizontal: 30,
         alignItems: 'center',
+        flexDirection: 'row',
+        gap: 10,
     },
     btnText: { 
         color: '#0b0b0c',
         fontWeight: '700' 
     },
-    secondaryCounterBox: {
-        alignItems: 'center',
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        backgroundColor: '#1b1b20',
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: '#2a2a30',
-        minWidth: 150,
+    footer: { 
+        color: '#85859a',
+        textAlign: 'center',
     },
 });

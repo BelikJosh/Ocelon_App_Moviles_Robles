@@ -1,3 +1,4 @@
+// screens/LoginScreen.tsx (solo las partes modificadas)
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect, useState } from 'react';
@@ -28,14 +29,16 @@ const LoginScreen = ({ navigation }: Props) => {
   const { width, height } = useWindowDimensions();
 
   // escalas responsivas
-  const hs = (size: number) => (width / BASE_W) * size;            // horizontalScale
-  const vs = (size: number) => (height / BASE_H) * size;           // verticalScale
-  const ms = (size: number, factor = 0.5) => size + (hs(size) - size) * factor; // moderateScale
+  const hs = (size: number) => (width / BASE_W) * size;
+  const vs = (size: number) => (height / BASE_H) * size;
+  const ms = (size: number, factor = 0.5) => size + (hs(size) - size) * factor;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const { loading, error, login, limpiarError } = useLogin();
+  
+  // 🔥 MODIFICADO: Ahora incluye entrarComoInvitado
+  const { loading, error, login, entrarComoInvitado, limpiarError } = useLogin();
 
   useEffect(() => {
     if (error) {
@@ -62,9 +65,15 @@ const LoginScreen = ({ navigation }: Props) => {
     }
   };
 
-  const handleGuestLogin = () => navigation.replace('AppTabs');
+  // 🔥 MODIFICADO: Ahora usa entrarComoInvitado
+  const handleGuestLogin = async () => {
+    await entrarComoInvitado();
+    navigation.replace('AppTabs');
+  };
+
   const handleCreateAccount = () => navigation.navigate('CrearUsuario');
 
+  // ... (el resto del código JSX permanece IGUAL)
   // tamaños dependientes de pantalla
   const PADDING = hs(20);
   const INPUT_RADIUS = hs(10);
@@ -263,6 +272,7 @@ const LoginScreen = ({ navigation }: Props) => {
   );
 };
 
+// ... (los styles permanecen IGUALES)
 const styles = StyleSheet.create({
   container: { flex: 1, alignItems: 'center', backgroundColor: '#000000ff' },
   header: { alignItems: 'center' },

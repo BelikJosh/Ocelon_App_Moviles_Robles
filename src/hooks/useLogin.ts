@@ -1,3 +1,5 @@
+// hooks/useLogin.ts
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useState } from 'react';
 import { DynamoDBService, Usuario } from '../services/DynamoService';
 
@@ -18,7 +20,12 @@ export const useLogin = () => {
       
       if (resultado.success && resultado.usuario) {
         setUsuario(resultado.usuario);
-        console.log('✅ Login exitoso');
+        
+        // 🔥 NUEVO: Guardar usuario en AsyncStorage
+        await AsyncStorage.setItem('@user_data', JSON.stringify(resultado.usuario));
+        await AsyncStorage.removeItem('@is_guest');
+        
+        console.log('✅ Login exitoso - Usuario guardado');
         return { success: true, usuario: resultado.usuario };
       } else {
         setError(resultado.error || 'Error en el login');
@@ -35,6 +42,13 @@ export const useLogin = () => {
     }
   }, []);
 
+  // 🔥 NUEVO: Función para entrar como invitado
+  const entrarComoInvitado = useCallback(async () => {
+    await AsyncStorage.setItem('@is_guest', 'true');
+    await AsyncStorage.removeItem('@user_data');
+    console.log('🎭 Modo invitado activado');
+  }, []);
+
   const limpiarError = useCallback(() => {
     setError(null);
   }, []);
@@ -44,6 +58,7 @@ export const useLogin = () => {
     error,
     usuario,
     login,
+    entrarComoInvitado, // 🔥 NUEVO
     limpiarError
   };
 };
