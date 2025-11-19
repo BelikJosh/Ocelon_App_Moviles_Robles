@@ -3,8 +3,8 @@ import AWS from 'aws-sdk';
 // Configurar AWS con las credenciales CORRECTAS
 const config = {
   region: 'us-east-1',
-  accessKeyId: 'AKIAQ5BAACIVSK6Z5XG3', // ← Tu access key
-  secretAccessKey: '2cpPHlpQxElx6s5rB/qxpFuexnq39LiU+X7fA11K', // ← Tu secret key
+  accessKeyId: '', // ← Tu access key
+  secretAccessKey: '', // ← Tu secret key
   correctClockSkew: true,
 };
  
