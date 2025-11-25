@@ -1,4 +1,4 @@
-// screens/TimerScreen.tsx - VERSIÓN SIMPLIFICADA
+// screens/TimerScreen.tsx
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -11,8 +11,11 @@ import {
     useWindowDimensions,
     View,
 } from 'react-native';
-import { RootStackParamList } from '../navigation/types/navigation';
+import PayModal from '../components/PayModal';
+import { useAuthState } from '../hooks/useAuthState';
+import { RootStackParamList } from '../navegation/types/navigation';
 import { getTimer, onTimerChange, startTimer, stopTimer } from '../utils/TimerStore'; // ← QUITAR updateTimer
+import { initNotifications, sendNotification } from '../utils/notifications';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Timer'>;
 
@@ -50,7 +53,25 @@ export default function TimerScreen({ route, navigation }: Props) {
         }
     }, [route.params?.rawQrData]);
 
-    // ← ELIMINAR TODOS LOS USEEFFECTS DEL TIMER - ahora están en el store
+    useEffect(() => {
+        initNotifications();
+    }, []);
+
+    useEffect(() => {
+        if (!storeData.active) return;
+
+        const interval = setInterval(() => {
+            sendNotification(
+                "Tiempo de Estacionamiento",
+                `Tiempo transcurrido: ${formatTime(storeData.seconds)} - Costo: MXN ${storeData.cost}.00`
+            );
+        }, 30000);
+
+        return () => clearInterval(interval);
+    }, [storeData.seconds, storeData.cost, storeData.active]);
+
+    const [isPayModalVisible, setPayModalVisible] = useState(false);
+    const { usuario, esInvitado } = useAuthState(); // ← accedemos al usuario
     
     // --- LÓGICA DE UTILIDAD ---
     const formatTime = (totalSeconds: number) => {
@@ -63,12 +84,7 @@ export default function TimerScreen({ route, navigation }: Props) {
     
     const handleGoBack = () => {
         // Solo navegar hacia atrás, no detener el timer
-        navigation.goBack();
-    };
-
-    const handleStopTimer = () => {
-        stopTimer();
-        navigation.goBack();
+        navigation.navigate("AppTabs");
     };
     
     const [refreshing, setRefreshing] = useState(false);
@@ -90,6 +106,15 @@ export default function TimerScreen({ route, navigation }: Props) {
     const mainLabel = storeData.phase === 'COUNTDOWN' 
         ? `Tiempo libre restante` 
         : 'Tiempo Transcurrido (HH:MM:SS)';
+
+    const handlePaymentPress = () => {
+        if (usuario && !esInvitado) {
+            // Usuario logueado → mostrar modal
+            setPayModalVisible(true);
+        } else {
+            navigation.navigate("CashPayment", { monto: storeData.cost, rawQrData });
+        }
+    };
 
     return (
         <View style={s.container}>
@@ -175,21 +200,32 @@ export default function TimerScreen({ route, navigation }: Props) {
                         </Text>
                     </View>
                     
-                    {/* Botón de Detener Timer */}
+                    {/* Botón Pagar */}
                     <TouchableOpacity
-                        style={[s.primaryBtn, { 
-                            borderRadius: CARD_RADIUS, 
-                            paddingVertical: vs(16),
-                            marginTop: vs(20),
-                            marginBottom: vs(24) 
-                        }]}
-                        onPress={handleStopTimer}
+                        style={[
+                            s.primaryBtn,
+                            { 
+                                borderRadius: CARD_RADIUS, 
+                                paddingVertical: vs(16),
+                                marginTop: vs(20),
+                                marginBottom: vs(24)
+                            }
+                        ]}
+                        onPress={() => handlePaymentPress()}
                     >
                         <Ionicons name="stop-circle-outline" size={ms(20)} color="#0b0b0c" />
                         <Text style={[s.btnText, { fontSize: ms(16) }]}>
-                            Detener Timer
+                            Pagar
                         </Text>
                     </TouchableOpacity>
+
+                    <PayModal
+                        visible={isPayModalVisible}
+                        total={storeData.cost}
+                        rawQrData={rawQrData}
+                        onClose={() => setPayModalVisible(false)}
+                        navigation={navigation}
+                    />
                     
                     {/* Footer */}
                     <Text style={[s.footer, { fontSize: ms(12) }]}>
