@@ -13,10 +13,13 @@ import { RootStackParamList } from './src/navegation/types/navigation';
 
 import AppTabs from './src/pages/AppTabs';
 import CrearUsuarioScreen from './src/pages/CrearUsuarioScreen';
+import ExitScreen from './src/pages/ExitScreen';
 import LoginScreen from './src/pages/LoginScreen';
 import SplashScreen from './src/pages/SplashScreen';
 import TimerScreen from './src/pages/TimerScreen';
-
+import ValorationScreen from './src/pages/ValorationScreen';
+import CashPayment from './src/payments/CashPayment';
+import DigitalPayment from './src/payments/DigitalPayment';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -30,7 +33,10 @@ export default function App() {
       <Stack.Screen name="AppTabs" component={AppTabs} />
       <Stack.Screen name="CrearUsuario" component={CrearUsuarioScreen} />
       <Stack.Screen name="Timer" component={TimerScreen} />
-      
+      <Stack.Screen name="CashPayment" component={CashPayment} />
+      <Stack.Screen name="DigitalPayment" component={DigitalPayment} />
+      <Stack.Screen name="ExitScreen" component={ExitScreen} />
+      <Stack.Screen name="ValorationScreen" component={ValorationScreen} />
     </Stack.Navigator>
   </NavigationContainer>
   );

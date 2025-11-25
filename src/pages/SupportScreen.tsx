@@ -2,19 +2,30 @@
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import React from 'react';
 import {
-    Image,
-    Linking,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    useWindowDimensions,
-    View,
+  Image,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
 } from 'react-native';
+
+import { useAuthState } from '../hooks/useAuthState';
 
 export default function SupportScreen() {
   const { width } = useWindowDimensions();
   
+  // Estado de autenticación
+  const { usuario, esInvitado, loading } = useAuthState();
+
+  const getUserName = () => {
+    if (loading) return 'Cargando...';
+    if (usuario) return usuario.nombre;
+    return 'Invitado';
+  };
+
   // Escalas responsivas
   const BASE_W = 375;
   const hs = (n: number) => (width / BASE_W) * n;
@@ -54,12 +65,18 @@ export default function SupportScreen() {
               style={[s.logo, { width: hs(120), height: hs(120), borderRadius: hs(12) }]}
             />
           </View>
+
           <Text style={[s.title, { fontSize: ms(30) }]}>Soporte</Text>
-          <Text style={[s.greeting, { fontSize: ms(18) }]}>Hola (Nombre)</Text>
+
+          {/* ← Nombre dinámico reemplazando (Nombre) */}
+          <Text style={[s.greeting, { fontSize: ms(18) }]}>
+            Hola {getUserName()}
+          </Text>
         </View>
 
         {/* Contenedor para las secciones */}
         <View style={{ width: '100%', maxWidth: MAX_W, alignSelf: 'center' }}>
+          
           {/* Sección: ¿Tienes un problema? */}
           <View style={s.section}>
             <Text style={[s.sectionTitle, { fontSize: ms(17) }]}>¿Tienes un problema?</Text>
@@ -117,6 +134,7 @@ export default function SupportScreen() {
               Nuestro equipo de soporte está disponible de lunes a viernes de 9:00 AM a 6:00 PM
             </Text>
           </View>
+
         </View>
       </ScrollView>
     </View>
