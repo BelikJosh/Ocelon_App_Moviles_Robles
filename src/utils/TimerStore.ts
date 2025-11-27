@@ -1,170 +1,225 @@
 // utils/TimerStore.ts
-type TimerData = {
-  active: boolean;
-  seconds: number;
-  cost: number;
-  phase: 'COUNTDOWN' | 'STOPWATCH';
-  countdown: number;
-  rawQrData: string;
-  startTime: number | null; // ← AGREGAR para calcular tiempo transcurrido
-};
+// Store global para el timer de estacionamiento - COSTO EN USD
 
-const TimerStore: TimerData = {
+// ═══════════════════════════════════════════════════════════════
+// Configuración de Tarifas
+// ═══════════════════════════════════════════════════════════════
+
+// Tarifa: $1.00 USD por cada 10 segundos (para demo)
+const RATE_USD = 1.00;           // USD por intervalo
+const INTERVAL_SECONDS = 10;      // Cada cuántos segundos se cobra
+const FREE_TIME_SECONDS = 5;      // Tiempo libre inicial
+
+// ═══════════════════════════════════════════════════════════════
+
+type Phase = 'COUNTDOWN' | 'BILLING';
+
+interface TimerState {
+  active: boolean;
+  seconds: number;        // Segundos transcurridos en billing
+  cost: number;          // Costo en USD
+  rawQrData: string;
+  phase: Phase;
+  countdown: string;      // "5", "4", "3"... para mostrar
+  startTime: number | null;
+}
+
+// Estado inicial
+const initialState: TimerState = {
   active: false,
   seconds: 0,
   cost: 0,
-  phase: 'COUNTDOWN',
-  countdown: 10,
   rawQrData: '',
-  startTime: null, // ← AGREGAR
+  phase: 'COUNTDOWN',
+  countdown: FREE_TIME_SECONDS.toString(),
+  startTime: null,
 };
 
-const listeners: Function[] = [];
-let countdownInterval: NodeJS.Timeout | null = null;
-let timerInterval: NodeJS.Timeout | null = null;
+// Estado actual
+let state: TimerState = { ...initialState };
 
-// Función para calcular el tiempo transcurrido desde el inicio
-const getElapsedSeconds = () => {
-  if (!TimerStore.startTime) return TimerStore.seconds;
-  const now = Date.now();
-  return Math.floor((now - TimerStore.startTime) / 1000);
-};
+// Listeners para notificar cambios
+const listeners: Set<() => void> = new Set();
 
-// Función para calcular el costo basado en el tiempo
-const calculateCost = (seconds: number) => {
-  // $15 MXN por cada 10 segundos, empezando después del countdown
-  const chargingSeconds = Math.max(0, seconds - 10); // Restar los 10 segundos gratis
-  return Math.floor(chargingSeconds / 10) * 15;
-};
+// Intervalo del timer
+let timerInterval: ReturnType<typeof setInterval> | null = null;
 
-export const updateTimer = (data: Partial<TimerData>) => {
-  Object.assign(TimerStore, data);
-  listeners.forEach((l) => l());
-};
+// Variables de control interno
+let countdownValue = FREE_TIME_SECONDS;
 
-export const getTimer = () => ({ 
-  ...TimerStore,
-  seconds: TimerStore.active ? getElapsedSeconds() : TimerStore.seconds,
-  cost: TimerStore.active ? calculateCost(getElapsedSeconds()) : TimerStore.cost
-});
+// ═══════════════════════════════════════════════════════════════
+// Funciones públicas
+// ═══════════════════════════════════════════════════════════════
 
-export const onTimerChange = (listener: Function) => {
-  listeners.push(listener);
-  return () => {
-    const i = listeners.indexOf(listener);
-    if (i >= 0) listeners.splice(i, 1);
-  };
-};
+/**
+ * Obtener el estado actual del timer
+ */
+export function getTimer(): TimerState {
+  return { ...state };
+}
 
-export const startTimer = (qrData: string) => {
-  // Limpiar timers anteriores
-  if (countdownInterval) clearInterval(countdownInterval);
-  if (timerInterval) clearInterval(timerInterval);
-  
-  const startTime = Date.now();
-  
-  TimerStore.active = true;
-  TimerStore.phase = 'COUNTDOWN';
-  TimerStore.countdown = 10;
-  TimerStore.seconds = 0;
-  TimerStore.cost = 0;
-  TimerStore.rawQrData = qrData;
-  TimerStore.startTime = startTime;
-  
-  // Iniciar countdown
-  countdownInterval = setInterval(() => {
-    const elapsed = getElapsedSeconds();
-    const remainingCountdown = Math.max(0, 10 - elapsed);
-    
-    if (remainingCountdown <= 0) {
-      if (countdownInterval) clearInterval(countdownInterval);
-      TimerStore.phase = 'STOPWATCH';
-      TimerStore.countdown = 0;
-      listeners.forEach((l) => l());
-    } else {
-      TimerStore.countdown = remainingCountdown;
-      listeners.forEach((l) => l());
-    }
-  }, 100);
-  
-  // Timer para actualizaciones continuas (más frecuente para mejor UX)
-  timerInterval = setInterval(() => {
-    if (TimerStore.active) {
-      listeners.forEach((l) => l());
-    }
-  }, 500);
-  
-  listeners.forEach((l) => l());
-};
+/**
+ * Suscribirse a cambios del timer
+ * @returns Función para desuscribirse
+ */
+export function onTimerChange(callback: () => void): () => void {
+  listeners.add(callback);
+  return () => listeners.delete(callback);
+}
 
-export const stopTimer = () => {
-  if (countdownInterval) {
-    clearInterval(countdownInterval);
-    countdownInterval = null;
+/**
+ * Iniciar el timer de estacionamiento
+ * @param rawQrData - Datos del QR escaneado
+ */
+export function startTimer(rawQrData: string): void {
+  // Si ya está activo, no hacer nada
+  if (state.active) {
+    console.log('⚠️ [TimerStore] Timer ya está activo');
+    return;
   }
+
+  console.log('🚀 [TimerStore] Iniciando timer...');
+  console.log('   QR Data:', rawQrData.slice(0, 50) + '...');
+
+  // Reset state
+  countdownValue = FREE_TIME_SECONDS;
+
+  state = {
+    active: true,
+    seconds: 0,
+    cost: 0,
+    rawQrData,
+    phase: 'COUNTDOWN',
+    countdown: countdownValue.toString(),
+    startTime: Date.now(),
+  };
+
+  notifyListeners();
+
+  // Iniciar intervalo (cada segundo)
+  timerInterval = setInterval(() => {
+    tick();
+  }, 1000);
+}
+
+/**
+ * Detener el timer
+ */
+export function stopTimer(): void {
+  console.log('🛑 [TimerStore] Deteniendo timer...');
+  console.log('   Tiempo total:', state.seconds, 'segundos');
+  console.log('   Costo final: $' + state.cost.toFixed(2), 'USD');
+
   if (timerInterval) {
     clearInterval(timerInterval);
     timerInterval = null;
   }
-  
-  // Guardar el estado final antes de resetear
-  const finalSeconds = getElapsedSeconds();
-  const finalCost = calculateCost(finalSeconds);
-  
-  TimerStore.active = false;
-  TimerStore.seconds = finalSeconds;
-  TimerStore.cost = finalCost;
-  TimerStore.phase = 'COUNTDOWN';
-  TimerStore.countdown = 10;
-  TimerStore.startTime = null;
-  
-  listeners.forEach((l) => l());
-};
 
-// Función para pausar el timer (si la necesitas)
-export const pauseTimer = () => {
-  if (countdownInterval) clearInterval(countdownInterval);
-  if (timerInterval) clearInterval(timerInterval);
-  countdownInterval = null;
-  timerInterval = null;
-};
+  state = { ...initialState };
+  countdownValue = FREE_TIME_SECONDS;
 
-// Función para reanudar el timer (si la necesitas)
-export const resumeTimer = () => {
-  if (!TimerStore.active || !TimerStore.startTime) return;
-  
-  // Recalcular el tiempo transcurrido
-  const elapsed = getElapsedSeconds();
-  
-  if (TimerStore.phase === 'COUNTDOWN') {
-    const remainingCountdown = Math.max(0, 10 - elapsed);
-    if (remainingCountdown > 0) {
-      countdownInterval = setInterval(() => {
-        const currentElapsed = getElapsedSeconds();
-        const currentRemaining = Math.max(0, 10 - currentElapsed);
-        
-        if (currentRemaining <= 0) {
-          if (countdownInterval) clearInterval(countdownInterval);
-          TimerStore.phase = 'STOPWATCH';
-          TimerStore.countdown = 0;
-          listeners.forEach((l) => l());
-        } else {
-          TimerStore.countdown = currentRemaining;
-          listeners.forEach((l) => l());
-        }
-      }, 100);
+  notifyListeners();
+}
+
+/**
+ * Actualizar datos del QR (si es necesario)
+ */
+export function updateQrData(rawQrData: string): void {
+  state = { ...state, rawQrData };
+  notifyListeners();
+}
+
+/**
+ * Obtener el costo formateado en USD
+ */
+export function getFormattedCost(): string {
+  return `$${state.cost.toFixed(2)} USD`;
+}
+
+/**
+ * Obtener el tiempo formateado HH:MM:SS
+ */
+export function getFormattedTime(): string {
+  const totalSeconds = state.seconds;
+  const hrs = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+  const pad = (num: number) => String(num).padStart(2, '0');
+  return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Funciones internas
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Tick del timer (cada segundo)
+ */
+function tick(): void {
+  if (!state.active) return;
+
+  if (state.phase === 'COUNTDOWN') {
+    // Fase de cuenta regresiva (tiempo libre)
+    countdownValue--;
+
+    if (countdownValue <= 0) {
+      // Termina el tiempo libre, comienza el cobro
+      console.log('⏱️ [TimerStore] Tiempo libre terminado, iniciando cobro...');
+      state = {
+        ...state,
+        phase: 'BILLING',
+        countdown: '0',
+        seconds: 0,
+        cost: 0,
+      };
     } else {
-      TimerStore.phase = 'STOPWATCH';
-      TimerStore.countdown = 0;
+      state = {
+        ...state,
+        countdown: countdownValue.toString(),
+      };
+    }
+  } else {
+    // Fase de cobro
+    const newSeconds = state.seconds + 1;
+
+    // Calcular costo: $1 USD por cada 10 segundos
+    const intervals = Math.floor(newSeconds / INTERVAL_SECONDS);
+    const newCost = intervals * RATE_USD;
+
+    state = {
+      ...state,
+      seconds: newSeconds,
+      cost: newCost,
+    };
+
+    // Log cada 10 segundos
+    if (newSeconds % INTERVAL_SECONDS === 0) {
+      console.log(`💰 [TimerStore] ${newSeconds}s - $${newCost.toFixed(2)} USD`);
     }
   }
-  
-  // Timer para actualizaciones continuas
-  timerInterval = setInterval(() => {
-    if (TimerStore.active) {
-      listeners.forEach((l) => l());
+
+  notifyListeners();
+}
+
+/**
+ * Notificar a todos los listeners
+ */
+function notifyListeners(): void {
+  listeners.forEach(callback => {
+    try {
+      callback();
+    } catch (error) {
+      console.error('Error en listener del TimerStore:', error);
     }
-  }, 500);
-  
-  listeners.forEach((l) => l());
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Exportar configuración (para mostrar en UI)
+// ═══════════════════════════════════════════════════════════════
+
+export const TIMER_CONFIG = {
+  RATE_USD,
+  INTERVAL_SECONDS,
+  FREE_TIME_SECONDS,
 };

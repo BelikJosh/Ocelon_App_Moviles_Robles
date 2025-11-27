@@ -47,6 +47,26 @@ export default function PayModal({ visible, total, rawQrData, onClose, navigatio
         >
           <Text style={styles.buttonText}>Pago en Cajero</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: "#121215", borderWidth: 1, borderColor: "#42b883" }]}
+          onPress={() => {
+            onClose();
+            // @ts-ignore
+            navigation.navigate("AppTabs", {
+              screen: "Wallet",
+              params: {
+                qr: {
+                  amount: total.toString(),
+                  raw: rawQrData,
+                  scheme: 'openpayment'
+                }
+              }
+            });
+          }}
+        >
+          <Text style={[styles.buttonText, { color: "#42b883" }]}>Pago con OpenPayments</Text>
+        </TouchableOpacity>
       </View>
     </Modal>
   );

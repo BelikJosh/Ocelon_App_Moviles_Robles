@@ -1,7 +1,7 @@
 import { createAuthenticatedClient, isPendingGrant } from '@interledger/open-payments';
 import fs from 'fs/promises';
 
-export async function makeClient({ walletAddressUrl, privateKeyPath, keyId }) { 
+export async function makeClient({ walletAddressUrl, privateKeyPath, keyId }) {
   const privateKey = await fs.readFile(privateKeyPath, 'utf8');
   return createAuthenticatedClient({ walletAddressUrl, privateKey, keyId });
 }
@@ -14,7 +14,7 @@ export async function getWalletInfo(client, walletAddressUrl) {
 export async function incomingGrant(client, authServer) {
   const grant = await client.grant.request(
     { url: authServer },
-    { access_token: { access: [{ type: 'incoming-payment', actions: ['create','read'] }] } }
+    { access_token: { access: [{ type: 'incoming-payment', actions: ['create', 'read'] }] } }
   );
   if (isPendingGrant(grant)) throw new Error('incoming grant no debe ser interactivo');
   return grant.access_token.value;
@@ -25,7 +25,7 @@ export async function startOutgoingGrant(client, authServer, finishRedirectUrl, 
     { url: authServer },
     {
       interact: { start: ['redirect'], finish: { method: 'redirect', uri: finishRedirectUrl, nonce } },
-      access_token: { access: [{ type: 'outgoing-payment', actions: ['create','read'] }] }
+      access_token: { access: [{ type: 'outgoing-payment', actions: ['create', 'read'] }] }
     }
   );
   if (!isPendingGrant(pending)) {
@@ -50,7 +50,7 @@ export async function continueOutgoingGrant(client, continueUri, continueAccessT
 export async function quoteGrant(client, authServer) {
   const grant = await client.grant.request(
     { url: authServer },
-    { access_token: { access: [{ type: 'quote', actions: ['create','read'] }] } }
+    { access_token: { access: [{ type: 'quote', actions: ['create', 'read'] }] } }
   );
   if (isPendingGrant(grant)) throw new Error('quote grant no debe ser interactivo');
   return grant.access_token.value;

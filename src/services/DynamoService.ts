@@ -3,11 +3,11 @@ import AWS from 'aws-sdk';
 // Configurar AWS con las credenciales CORRECTAS
 const config = {
   region: 'us-east-1',
-  accessKeyId: '', // ← Tu access key
-  secretAccessKey: '', // ← Tu secret key
+  accessKeyId: 'AKIAQ5BAACIVSK6Z5XG3', // ← Tu access key
+  secretAccessKey: '2cpPHlpQxElx6s5rB/qxpFuexnq39LiU+X7fA11K', // ← Tu secret key
   correctClockSkew: true,
 };
- 
+
 
 AWS.config.update(config);
 
@@ -52,7 +52,7 @@ export class DynamoDBService {
       dynamoDB.query(queryParams, (err, data) => {
         if (err) {
           console.log('⚠️ Query falló, intentando con scan...', err.code);
-          
+
           // Si query falla, intentar con SCAN
           const scanParams = {
             TableName: 'Usuarios',
@@ -79,73 +79,73 @@ export class DynamoDBService {
     });
   }
 
- static async verificarCredenciales(email: string, password: string): Promise<{ 
-  success: boolean; 
-  usuario?: Usuario; 
-  error?: string 
-}> {
-  try {
-    console.log('🔐 Verificando credenciales...');
-    
-    // 1. PRIMERO intentar con DynamoDB (si las credenciales son buenas)
+  static async verificarCredenciales(email: string, password: string): Promise<{
+    success: boolean;
+    usuario?: Usuario;
+    error?: string
+  }> {
     try {
-      console.log('🔄 Intentando con DynamoDB...');
-      const usuario = await this.obtenerUsuarioPorEmail(email);
-      
-      if (usuario) {
-        if (usuario.password === password) {
-          console.log('✅ Login exitoso con DynamoDB');
-          return { success: true, usuario };
-        } else {
-          return { success: false, error: 'Contraseña incorrecta' };
+      console.log('🔐 Verificando credenciales...');
+
+      // 1. PRIMERO intentar con DynamoDB (si las credenciales son buenas)
+      try {
+        console.log('🔄 Intentando con DynamoDB...');
+        const usuario = await this.obtenerUsuarioPorEmail(email);
+
+        if (usuario) {
+          if (usuario.password === password) {
+            console.log('✅ Login exitoso con DynamoDB');
+            return { success: true, usuario };
+          } else {
+            return { success: false, error: 'Contraseña incorrecta' };
+          }
         }
+      } catch (dbError: any) {
+        console.log('⚠️ DynamoDB falló, usando modo prueba...', dbError.code);
       }
-    } catch (dbError: any) {
-      console.log('⚠️ DynamoDB falló, usando modo prueba...', dbError.code);
-    }
 
-    // 2. SI DynamoDB FALLA, usar modo prueba
-    console.log('🔧 Usando modo prueba...');
-    
-    const usuariosValidos = {
-      'test@test.com': 'test123',
-      'admin@ocelon.com': 'admin123', 
-      'usuario@ejemplo.com': 'password123',
-      'josue@ocelon.com': 'josue123',
-      'qr@ocelon.com': 'qr123',
-      'invitado@ocelon.com': 'invitado123'
-    };
+      // 2. SI DynamoDB FALLA, usar modo prueba
+      console.log('🔧 Usando modo prueba...');
 
-    if (usuariosValidos[email] && usuariosValidos[email] === password) {
-      console.log('✅ Login exitoso (modo prueba)');
+      const usuariosValidos = {
+        'test@test.com': 'test123',
+        'admin@ocelon.com': 'admin123',
+        'usuario@ejemplo.com': 'password123',
+        'josue@ocelon.com': 'josue123',
+        'qr@ocelon.com': 'qr123',
+        'invitado@ocelon.com': 'invitado123'
+      };
+
+      if (usuariosValidos[email] && usuariosValidos[email] === password) {
+        console.log('✅ Login exitoso (modo prueba)');
+        return {
+          success: true,
+          usuario: {
+            id: `USER#${email.replace(/[@.]/g, '_')}_${Date.now()}`,
+            nombre: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
+            email: email,
+            password: password,
+            wallet: `wallet_${Date.now()}`,
+            fechaRegistro: new Date().toISOString(),
+            ultimaActualizacion: new Date().toISOString(),
+            estancias: []
+          }
+        };
+      }
+
       return {
-        success: true,
-        usuario: {
-          id: `USER#${email.replace(/[@.]/g, '_')}_${Date.now()}`,
-          nombre: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
-          email: email,
-          password: password,
-          wallet: `wallet_${Date.now()}`,
-          fechaRegistro: new Date().toISOString(),
-          ultimaActualizacion: new Date().toISOString(),
-          estancias: []
-        }
+        success: false,
+        error: 'Credenciales incorrectas. Usa: test@test.com / test123'
+      };
+
+    } catch (error: any) {
+      console.error('❌ Error inesperado:', error);
+      return {
+        success: false,
+        error: 'Error del servidor. Intenta más tarde.'
       };
     }
-
-    return { 
-      success: false, 
-      error: 'Credenciales incorrectas. Usa: test@test.com / test123' 
-    };
-
-  } catch (error: any) {
-    console.error('❌ Error inesperado:', error);
-    return { 
-      success: false, 
-      error: 'Error del servidor. Intenta más tarde.' 
-    };
   }
-}
   // 📝 MÉTODO PARA CREAR USUARIO
   static async crearUsuario(usuarioData: {
     nombre: string;
@@ -158,7 +158,7 @@ export class DynamoDBService {
         const timestamp = Date.now();
         const random = Math.floor(Math.random() * 10000);
         const userId = `USER#${timestamp}_${random}`;
-        
+
         const wallet = `wallet_${timestamp}_${random}`;
 
         const usuarioCompleto: Usuario = {
@@ -196,64 +196,64 @@ export class DynamoDBService {
       }
     });
   }
-// Agrega esta función para diagnosticar
-static async diagnosticarPermisos(): Promise<void> {
-  console.log('🔍 Iniciando diagnóstico de permisos...');
-  
-  // Test 1: Permisos de escritura (put)
-  try {
-    const testPut = await this.crearUsuario({
-      nombre: 'Test Diagnóstico',
-      email: `test${Date.now()}@diagnostico.com`,
-      password: 'test123',
-      telefono: '1234567890'
-    });
-    console.log('✅ Permisos de ESCRITURA (put) - OK');
-  } catch (error) {
-    console.error('❌ Permisos de ESCRITURA (put) - FALLIDO:', error.message);
-  }
+  // Agrega esta función para diagnosticar
+  static async diagnosticarPermisos(): Promise<void> {
+    console.log('🔍 Iniciando diagnóstico de permisos...');
 
-  // Test 2: Permisos de lectura (scan)
-  try {
-    const testScan = await new Promise((resolve) => {
-      dynamoDB.scan({ TableName: 'Usuarios', Limit: 1 }, (err, data) => {
-        if (err) {
-          console.error('❌ Permisos de LECTURA (scan) - FALLIDO:', err.message);
-        } else {
-          console.log('✅ Permisos de LECTURA (scan) - OK');
-        }
-        resolve(null);
+    // Test 1: Permisos de escritura (put)
+    try {
+      const testPut = await this.crearUsuario({
+        nombre: 'Test Diagnóstico',
+        email: `test${Date.now()}@diagnostico.com`,
+        password: 'test123',
+        telefono: '1234567890'
       });
-    });
-  } catch (error) {
-    console.error('❌ Error en test scan:', error);
-  }
+      console.log('✅ Permisos de ESCRITURA (put) - OK');
+    } catch (error) {
+      console.error('❌ Permisos de ESCRITURA (put) - FALLIDO:', error.message);
+    }
 
-  // Test 3: Permisos de query
-  try {
-    const testQuery = await new Promise((resolve) => {
-      const params = {
-        TableName: 'Usuarios',
-        IndexName: 'EmailIndex',
-        KeyConditionExpression: 'email = :email',
-        ExpressionAttributeValues: { ':email': 'test@test.com' },
-        Limit: 1
-      };
-      
-      dynamoDB.query(params, (err, data) => {
-        if (err) {
-          console.error('❌ Permisos de QUERY - FALLIDO:', err.message);
-          console.error('Código de error:', err.code);
-        } else {
-          console.log('✅ Permisos de QUERY - OK');
-        }
-        resolve(null);
+    // Test 2: Permisos de lectura (scan)
+    try {
+      const testScan = await new Promise((resolve) => {
+        dynamoDB.scan({ TableName: 'Usuarios', Limit: 1 }, (err, data) => {
+          if (err) {
+            console.error('❌ Permisos de LECTURA (scan) - FALLIDO:', err.message);
+          } else {
+            console.log('✅ Permisos de LECTURA (scan) - OK');
+          }
+          resolve(null);
+        });
       });
-    });
-  } catch (error) {
-    console.error('❌ Error en test query:', error);
+    } catch (error) {
+      console.error('❌ Error en test scan:', error);
+    }
+
+    // Test 3: Permisos de query
+    try {
+      const testQuery = await new Promise((resolve) => {
+        const params = {
+          TableName: 'Usuarios',
+          IndexName: 'EmailIndex',
+          KeyConditionExpression: 'email = :email',
+          ExpressionAttributeValues: { ':email': 'test@test.com' },
+          Limit: 1
+        };
+
+        dynamoDB.query(params, (err, data) => {
+          if (err) {
+            console.error('❌ Permisos de QUERY - FALLIDO:', err.message);
+            console.error('Código de error:', err.code);
+          } else {
+            console.log('✅ Permisos de QUERY - OK');
+          }
+          resolve(null);
+        });
+      });
+    } catch (error) {
+      console.error('❌ Error en test query:', error);
+    }
   }
-}
   // 🔍 MÉTODO PARA VERIFICAR PERMISOS
   static async verificarPermisos(): Promise<void> {
     return new Promise((resolve) => {

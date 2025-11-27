@@ -24,8 +24,8 @@ export default function TimerFloatingBar() {
     return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
   };
 
-  const displayTime = data.phase === 'COUNTDOWN' 
-    ? `⏱ ${data.countdown}s` 
+  const displayTime = data.phase === 'COUNTDOWN'
+    ? `⏱ ${data.countdown}s`
     : `⏱ ${formatTime(data.seconds)}`;
 
   return (
@@ -37,7 +37,7 @@ export default function TimerFloatingBar() {
       <View style={styles.content}>
         <Ionicons name="time-outline" size={20} color="#fff" />
         <Text style={styles.text}>
-          {displayTime} — 💰 MXN {data.cost}.00
+          {displayTime} — 💰 USD {data.cost}.00
         </Text>
         <Ionicons name="chevron-forward" size={18} color="#fff" />
       </View>
