@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { RootStackParamList } from '../navigation/types/navigation';
+import { RootStackParamList } from '../navegation/types/navigation';
 import { startTimer } from '../utils/TimerStore';
 
 type ScannerScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Timer'>;
@@ -20,20 +20,20 @@ export default function ScannerScreen() {
   const [scanned, setScanned] = useState(false);
   const navigation = useNavigation<ScannerScreenNavigationProp>();
 
-const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
+  const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
     setScanned(true);
     console.log(`📸 QR escaneado - Tipo: ${type}, Datos: ${data}`);
-    
+
     // Iniciar el timer global
     startTimer(data);
-    
-    // Navegar a TimerScreen
+
+    // Navegar a TimerScreen con todos los datos del QR
     setTimeout(() => {
-      navigation.navigate('Timer', { 
-        rawQrData: data 
+      navigation.navigate('Timer', {
+        rawQrData: data
       });
     }, 500);
-};
+  };
 
   const handleManualClose = () => {
     navigation.goBack();
@@ -59,9 +59,9 @@ const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) =>
           <Text style={styles.permissionSubtext}>
             Necesitamos acceso a la cámara para escanear códigos QR
           </Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.permissionButton}
-            onPress={requestPermission} 
+            onPress={requestPermission}
           >
             <Text style={styles.permissionButtonText}>Permitir cámara</Text>
           </TouchableOpacity>
@@ -80,7 +80,7 @@ const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) =>
         }}
         onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
       />
-      
+
       {/* Header con botón de cerrar */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.closeButton} onPress={handleManualClose}>
@@ -89,23 +89,23 @@ const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) =>
         <Text style={styles.headerTitle}>Escanear QR</Text>
         <View style={styles.headerPlaceholder} />
       </View>
-      
+
       {scanned && (
         <View style={styles.overlay}>
           <View style={styles.scanResult}>
             <Ionicons name="checkmark-circle" size={40} color="#42b883" />
             <Text style={styles.scanResultText}>¡QR Escaneado!</Text>
             <Text style={styles.scanResultSubtext}>Redirigiendo al temporizador...</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.scanAgainButton}
-              onPress={() => setScanned(false)} 
+              onPress={() => setScanned(false)}
             >
               <Text style={styles.scanAgainText}>Escanear otro QR</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
-      
+
       {/* Marco de escaneo visual */}
       <View style={styles.scanFrame}>
         <View style={styles.cornerTopLeft} />
@@ -113,7 +113,7 @@ const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) =>
         <View style={styles.cornerBottomLeft} />
         <View style={styles.cornerBottomRight} />
       </View>
-      
+
       {/* Instrucciones */}
       <View style={styles.instructionContainer}>
         <Text style={styles.instruction}>
@@ -127,7 +127,6 @@ const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) =>
   );
 }
 
-// Los estilos se mantienen igual...
 const styles = StyleSheet.create({
   container: {
     flex: 1,

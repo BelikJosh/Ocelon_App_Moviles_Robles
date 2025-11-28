@@ -66,7 +66,7 @@ function TopBar({
 function ScreenWithTopBar({ Component, navigation }: { Component: any; navigation: any }) {
   const insets = useSafeAreaInsets();
   const [showSupport, setShowSupport] = useState(false);
-  
+
   const { usuario, esInvitado, loading } = useAuthState();
 
   const getUserName = () => {
@@ -93,7 +93,7 @@ function ScreenWithTopBar({ Component, navigation }: { Component: any; navigatio
   return (
     <>
       <View style={{ flex: 1, backgroundColor: '#0b0b0c' }}>
-        <TopBar 
+        <TopBar
           userName={getUserName()}
           userStatus={getUserStatus()}
           onPressProfile={() => console.log('ProfileScreen')}
@@ -103,7 +103,7 @@ function ScreenWithTopBar({ Component, navigation }: { Component: any; navigatio
         <View style={{ flex: 1, paddingBottom: 74 + insets.bottom }}>
           <Component />
         </View>
-        
+
         {/* ← AGREGAR TimerFloatingBar AQUÍ - Aparece en TODAS las pantallas */}
         <TimerFloatingBar />
       </View>
@@ -118,7 +118,7 @@ function ScreenWithTopBar({ Component, navigation }: { Component: any; navigatio
         <View style={{ flex: 1, backgroundColor: '#0b0b0c' }}>
           <View style={[styles.modalHeader, { paddingTop: insets.top - 20 }]}>
             <Text style={styles.modalTitle}>Soporte</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => setShowSupport(false)}
               style={styles.closeButton}
             >
@@ -163,10 +163,10 @@ export default function AppTabs() {
         tabBarShowLabel: true,
         tabBarActiveTintColor: '#42b883',
         tabBarInactiveTintColor: '#174d34ff',
-        tabBarLabelStyle: { 
-          fontSize: 12, 
-          fontWeight: '600', 
-          marginBottom: 6 
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
+          marginBottom: 6
         },
         tabBarStyle: styles.tabBar,
         tabBarBackground: () => <View style={styles.tabBarBg} />,
@@ -174,11 +174,11 @@ export default function AppTabs() {
     >
       <Tab.Screen
         name="Home"
-        options={{ 
+        options={{
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color} />
-          ), 
-          tabBarLabel: 'Home' 
+          ),
+          tabBarLabel: 'Home'
         }}
       >
         {(props) => <ScreenWithTopBar Component={HomeScreen} navigation={props.navigation} />}
@@ -186,11 +186,11 @@ export default function AppTabs() {
 
       <Tab.Screen
         name="Wallet"
-        options={{ 
+        options={{
           tabBarIcon: ({ color, size }) => (
             <FontAwesome5 name="wallet" size={size} color={color} />
-          ), 
-          tabBarLabel: 'Wallet' 
+          ),
+          tabBarLabel: 'Wallet'
         }}
       >
         {(props) => <ScreenWithTopBar Component={WalletStack} navigation={props.navigation} />}
@@ -207,11 +207,11 @@ export default function AppTabs() {
 
       <Tab.Screen
         name="Map"
-        options={{ 
+        options={{
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="map" size={size} color={color} />
-          ), 
-          tabBarLabel: 'Map' 
+          ),
+          tabBarLabel: 'Map'
         }}
       >
         {(props) => <ScreenWithTopBar Component={MapScreen} navigation={props.navigation} />}
@@ -219,11 +219,11 @@ export default function AppTabs() {
 
       <Tab.Screen
         name="Config"
-        options={{ 
+        options={{
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="settings" size={size} color={color} />
-          ), 
-          tabBarLabel: 'Config' 
+          ),
+          tabBarLabel: 'Config'
         }}
       >
         {(props) => <ScreenWithTopBar Component={ConfigScreen} navigation={props.navigation} />}
@@ -243,109 +243,109 @@ const styles = StyleSheet.create({
     backgroundColor: '#002618ff',
     borderBottomWidth: 0,
   },
-  profileSection: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    gap: 12 
+  profileSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
   },
-  avatarCircle: { 
-    width: 42, 
-    height: 42, 
-    borderRadius: 21, 
-    backgroundColor: '#42b883', 
-    justifyContent: 'center', 
-    alignItems: 'center' 
+  avatarCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#42b883',
+    justifyContent: 'center',
+    alignItems: 'center'
   },
-  greeting: { 
-    fontSize: 15, 
-    fontWeight: '600', 
-    color: '#42b883', 
-    marginBottom: 2 
+  greeting: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#42b883',
+    marginBottom: 2
   },
-  userStatus: { 
-    fontSize: 11, 
-    color: '#85e0b3', 
+  userStatus: {
+    fontSize: 11,
+    color: '#85e0b3',
     fontWeight: '500',
     marginRight: 4
   },
-  rightSection: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    gap: 12 
+  rightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
   },
-  iconButton: { 
-    width: 42, 
-    height: 42, 
-    borderRadius: 21, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    backgroundColor: 'rgba(66, 184, 131, 0.1)' 
+  iconButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(66, 184, 131, 0.1)'
   },
-  badge: { 
-    position: 'absolute', 
-    top: 8, 
-    right: 8, 
-    width: 8, 
-    height: 8, 
-    borderRadius: 4, 
-    backgroundColor: '#ff4444' 
+  badge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#ff4444'
   },
-  supportButton: { 
-    flexDirection: 'row', 
-    backgroundColor: '#42b883', 
-    paddingHorizontal: 12, 
-    width: 'auto', 
-    gap: 6 
+  supportButton: {
+    flexDirection: 'row',
+    backgroundColor: '#42b883',
+    paddingHorizontal: 12,
+    width: 'auto',
+    gap: 6
   },
-  supportText: { 
-    fontSize: 13, 
-    fontWeight: '600', 
-    color: '#0b0b0c' 
+  supportText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0b0b0c'
   },
 
   // Tab Bar - Mejor distribución para 5 tabs
-  tabBar: { 
-    position: 'absolute', 
-    bottom: 0, 
-    left: 0, 
-    right: 0, 
-    height: 74, 
-    borderTopWidth: 0, 
-    elevation: 0, 
+  tabBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 74,
+    borderTopWidth: 0,
+    elevation: 0,
     backgroundColor: 'transparent',
     paddingHorizontal: 8,
   },
-  tabBarBg: { 
-    ...StyleSheet.absoluteFillObject, 
-    backgroundColor: '#121218', 
-    borderTopLeftRadius: 20, 
-    borderTopRightRadius: 20, 
-    shadowColor: '#42b883', 
-    shadowOpacity: 0.18, 
+  tabBarBg: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#121218',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    shadowColor: '#42b883',
+    shadowOpacity: 0.18,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: -4 },
   },
-  
+
   // Scanner button - Perfectamente centrado para 5 tabs
-  scannerButton: { 
-    position: 'absolute', 
+  scannerButton: {
+    position: 'absolute',
     bottom: 20,
     left: '50%',
     marginLeft: -34, // Mitad del width (68/2) para centrar perfectamente
-    width: 68, 
-    height: 68, 
-    borderRadius: 34, 
-    backgroundColor: '#42b883', 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    shadowColor: '#000', 
-    shadowOpacity: 0.3, 
-    shadowRadius: 12, 
-    shadowOffset: { width: 0, height: 5 }, 
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#42b883',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
     elevation: 12,
     zIndex: 1,
   },
-  
+
   // Modal styles
   modalHeader: {
     flexDirection: 'row',

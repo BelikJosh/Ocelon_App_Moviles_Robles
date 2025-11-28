@@ -18,6 +18,7 @@ import LoginScreen from './src/pages/LoginScreen';
 import SplashScreen from './src/pages/SplashScreen';
 import TimerScreen from './src/pages/TimerScreen';
 import ValorationScreen from './src/pages/ValorationScreen';
+import WalletScreen from './src/pages/WalletScreen';
 import CashPayment from './src/payments/CashPayment';
 import DigitalPayment from './src/payments/DigitalPayment';
 
@@ -25,19 +26,26 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   return (
-  <NavigationContainer>
-    <StatusBar style="light" />
-    <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Splash" component={SplashScreen} />
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="AppTabs" component={AppTabs} />
-      <Stack.Screen name="CrearUsuario" component={CrearUsuarioScreen} />
-      <Stack.Screen name="Timer" component={TimerScreen} />
-      <Stack.Screen name="CashPayment" component={CashPayment} />
-      <Stack.Screen name="DigitalPayment" component={DigitalPayment} />
-      <Stack.Screen name="ExitScreen" component={ExitScreen} />
-      <Stack.Screen name="ValorationScreen" component={ValorationScreen} />
-    </Stack.Navigator>
-  </NavigationContainer>
+    <NavigationContainer>
+      <StatusBar style="light" />
+      <Stack.Navigator
+        initialRouteName="Splash"
+        screenOptions={{
+          headerShown: false,
+          animation: 'slide_from_right'
+        }}
+      >
+        <Stack.Screen name="Splash" component={SplashScreen} />
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="AppTabs" component={AppTabs} />
+        <Stack.Screen name="CrearUsuario" component={CrearUsuarioScreen} />
+        <Stack.Screen name="Timer" component={TimerScreen} />
+        <Stack.Screen name="CashPayment" component={CashPayment} />
+        <Stack.Screen name="DigitalPayment" component={DigitalPayment} />
+        <Stack.Screen name="ExitScreen" component={ExitScreen} />
+        <Stack.Screen name="ValorationScreen" component={ValorationScreen} />
+        <Stack.Screen name="WalletScreen" component={WalletScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }

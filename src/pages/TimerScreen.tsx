@@ -4,14 +4,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+    Image,
     RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     useWindowDimensions,
-    View,
+    View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PayModal from '../components/PayModal';
 import { useAuthState } from '../hooks/useAuthState';
 import { RootStackParamList } from '../navegation/types/navigation';
@@ -40,6 +42,7 @@ const BASE_H = 812;
 export default function TimerScreen({ route, navigation }: Props) {
     // --- LÓGICA DE LA PLANTILLA (Responsiva) ---
     const { width, height } = useWindowDimensions();
+    const insets = useSafeAreaInsets();
     const hs = (size: number) => (width / BASE_W) * size;
     const vs = (size: number) => (height / BASE_H) * size;
     const ms = (size: number, factor = 0.5) => size + (hs(size) - size) * factor;
@@ -131,9 +134,19 @@ export default function TimerScreen({ route, navigation }: Props) {
                 spot: url.searchParams.get('spot') || 'N/A',
                 parking: url.searchParams.get('parking') || 'Estacionamiento',
                 nonce: url.searchParams.get('nonce') || '',
+                ts: url.searchParams.get('ts') || '',
+                from: url.searchParams.get('from') || '',
+                scheme: 'openpayment',
             };
         } catch {
-            return { spot: 'N/A', parking: 'Estacionamiento', nonce: '' };
+            return {
+                spot: 'N/A',
+                parking: 'Estacionamiento',
+                nonce: '',
+                ts: '',
+                from: '',
+                scheme: 'openpayment'
+            };
         }
     }, [rawQrData]);
 
@@ -142,34 +155,85 @@ export default function TimerScreen({ route, navigation }: Props) {
             setPayModalVisible(true);
         } else {
             // Para invitados - pago en efectivo
-            navigation.navigate("CashPayment", { monto: storeData.cost, rawQrData });
+            navigation.navigate("CashPayment", {
+                monto: storeData.cost,
+                rawQrData
+            });
         }
+    };
+
+    // Función para manejar pago con Open Payments
+    const handleOpenPaymentsPayment = () => {
+        // Detener el timer antes de navegar
+        stopTimer();
+
+        // Navegar al tab de Wallet en AppTabs con los datos
+        navigation.navigate("AppTabs", {
+            screen: "Wallet",
+            params: {
+                qr: {
+                    amount: storeData.cost.toString(),
+                    raw: rawQrData,
+                    scheme: qrInfo.scheme,
+                    nonce: qrInfo.nonce,
+                    ts: qrInfo.ts,
+                    from: qrInfo.from,
+                    spot: qrInfo.spot,
+                    parking: qrInfo.parking,
+                    elapsedTime: storeData.seconds,
+                    finalCost: storeData.cost
+                }
+            }
+        });
+
+        setPayModalVisible(false);
     };
 
     return (
         <View style={s.container}>
+            {/* Logo de fondo transparente */}
+            <Image
+                source={require('../../assets/images/Logo_ocelon.jpg')}
+                style={[s.backgroundLogo, {
+                    width: width * 0.8,
+                    height: width * 0.8,
+                }]}
+                resizeMode="contain"
+            />
+
             <ScrollView
                 contentContainerStyle={{
                     flexGrow: 1,
                     alignItems: 'center',
                     paddingHorizontal: PADDING,
-                    paddingBottom: vs(24),
+                    paddingTop: insets.top + vs(16), // Respeta el notch + padding extra
+                    paddingBottom: vs(40),
+                    minHeight: height,
                 }}
-                showsVerticalScrollIndicator={false}
-                bounces
+                showsVerticalScrollIndicator={true}
+                bounces={true}
+                alwaysBounceVertical={true}
+                scrollEnabled={true}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#42b883" />
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        tintColor="#42b883"
+                        colors={['#42b883']}
+                        progressViewOffset={insets.top} // Ajusta el indicador de refresh
+                    />
                 }
             >
-                <View style={{ width: '100%', alignItems: 'center', flex: 1, justifyContent: 'center' }}>
+                <View style={{ width: '100%', alignItems: 'center' }}>
 
                     {/* Header */}
-                    <View style={[s.header, { marginBottom: vs(20) }]}>
+                    <View style={[s.header, { marginBottom: vs(24), paddingVertical: vs(8) }]}>
                         <TouchableOpacity
                             style={s.backButton}
                             onPress={handleGoBack}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                         >
-                            <Ionicons name="arrow-back" size={24} color="#42b883" />
+                            <Ionicons name="arrow-back" size={26} color="#42b883" />
                         </TouchableOpacity>
                         <Text style={[s.headerTitle, { fontSize: ms(18) }]}>
                             {qrInfo.parking}
@@ -264,6 +328,12 @@ export default function TimerScreen({ route, navigation }: Props) {
                             <Text style={s.qrLabel}>Estacionamiento:</Text>
                             <Text style={s.qrValue}>{qrInfo.parking}</Text>
                         </View>
+
+                        <View style={s.qrRow}>
+                            <Ionicons name="time-outline" size={ms(14)} color="#9aa0a6" />
+                            <Text style={s.qrLabel}>Tiempo transcurrido:</Text>
+                            <Text style={s.qrValue}>{formatTime(storeData.seconds)}</Text>
+                        </View>
                     </View>
 
                     {/* Botón Pagar */}
@@ -316,12 +386,16 @@ export default function TimerScreen({ route, navigation }: Props) {
                         rawQrData={rawQrData}
                         onClose={() => setPayModalVisible(false)}
                         navigation={navigation}
+                        onOpenPaymentsPress={handleOpenPaymentsPayment}
                     />
 
                     {/* Footer */}
-                    <Text style={[s.footer, { fontSize: ms(11), marginTop: vs(16) }]}>
+                    <Text style={[s.footer, { fontSize: ms(11), marginTop: vs(24) }]}>
                         © {new Date().getFullYear()} Ocelon — Estacionamiento Inteligente
                     </Text>
+
+                    {/* Espaciado extra para asegurar scroll */}
+                    <View style={{ height: vs(20) }} />
                 </View>
             </ScrollView>
         </View>
@@ -329,20 +403,37 @@ export default function TimerScreen({ route, navigation }: Props) {
 }
 
 const s = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#0b0b0c' },
+    container: {
+        flex: 1,
+        backgroundColor: '#0b0b0c'
+    },
+    backgroundLogo: {
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: [
+            { translateX: -150 },  // Ajusta según el tamaño del logo
+            { translateY: -150 }   // Ajusta según el tamaño del logo
+        ],
+        opacity: 0.05,
+        zIndex: 0,
+    },
     header: {
         width: '100%',
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        zIndex: 1,
     },
     backButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(66, 184, 131, 0.1)',
+        width: 46,
+        height: 46,
+        borderRadius: 23,
+        backgroundColor: 'rgba(66, 184, 131, 0.15)',
         justifyContent: 'center',
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(66, 184, 131, 0.3)',
     },
     headerTitle: {
         color: '#fff',
@@ -351,7 +442,7 @@ const s = StyleSheet.create({
         flex: 1,
     },
     headerPlaceholder: {
-        width: 40,
+        width: 46,
     },
     spotBadge: {
         flexDirection: 'row',
@@ -361,6 +452,7 @@ const s = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 20,
+        zIndex: 1,
     },
     spotText: {
         color: '#0b0b0c',
@@ -377,6 +469,7 @@ const s = StyleSheet.create({
         shadowRadius: 12,
         shadowOffset: { width: 0, height: 8 },
         elevation: 10,
+        zIndex: 1,
     },
     timerText: {
         fontWeight: '700',
@@ -392,6 +485,7 @@ const s = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#202028',
         alignItems: 'center',
+        zIndex: 1,
     },
     costHeader: {
         flexDirection: 'row',
@@ -448,6 +542,7 @@ const s = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#202028',
         marginTop: 12,
+        zIndex: 1,
     },
     qrTitle: {
         color: '#fff',
@@ -477,6 +572,7 @@ const s = StyleSheet.create({
         justifyContent: 'center',
         flexDirection: 'row',
         gap: 10,
+        zIndex: 1,
     },
     btnText: {
         color: '#0b0b0c',
@@ -490,6 +586,7 @@ const s = StyleSheet.create({
         justifyContent: 'center',
         flexDirection: 'row',
         gap: 8,
+        zIndex: 1,
     },
     secondaryBtnText: {
         color: '#ff6b6b',
@@ -499,5 +596,6 @@ const s = StyleSheet.create({
     footer: {
         color: '#85859a',
         textAlign: 'center',
+        zIndex: 1,
     },
 });

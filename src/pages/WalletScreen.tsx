@@ -1,6 +1,6 @@
-// screens/WalletScreen.tsx - VERSIÓN CORREGIDA
+// screens/WalletScreen.tsx - VERSIÓN COMPLETA CORREGIDA
 import { Ionicons } from '@expo/vector-icons';
-import { useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
+import CustomSuccessModal from '../components/CustomSuccessModal';
 import { opApi } from '../services/opApi';
 
 // ═══════════════════════════════════════════════════════════════
@@ -32,6 +33,8 @@ type QrPayload = {
   from?: string;
   spot?: string;       // Cajón de estacionamiento
   parking?: string;    // Nombre del estacionamiento
+  elapsedTime?: number; // Tiempo transcurrido en segundos
+  finalCost?: number;  // Costo final en USD
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -70,6 +73,14 @@ function convertUSDtoMXN(usd: number): number {
   return usd * USD_TO_MXN_RATE;
 }
 
+function formatTime(totalSeconds: number) {
+  const hrs = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+  const pad = (num: number) => String(num).padStart(2, '0');
+  return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
+}
+
 function getInteractRef(url: string) {
   try {
     const u = new URL(url);
@@ -100,6 +111,7 @@ function DetailRow({
   label,
   value,
   hs,
+  vs,
   ms,
   valueColor,
 }: {
@@ -107,11 +119,12 @@ function DetailRow({
   label: string;
   value?: string;
   hs: (n: number) => number;
+  vs: (n: number) => number;
   ms: (n: number, f?: number) => number;
   valueColor?: string;
 }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: hs(10), paddingVertical: 6 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: hs(10), paddingVertical: vs(6) }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: hs(8), flexShrink: 0 }}>
         {icon}
         <Text style={{ color: '#a0a0a0', fontSize: hs(12) }}>{label}</Text>
@@ -139,6 +152,7 @@ function DetailRow({
 
 export default function WalletScreen() {
   const route = useRoute<any>();
+  const navigation = useNavigation<any>();
   const qr: QrPayload = route.params?.qr ?? {};
   const webRef = useRef<WebView>(null);
   const continuedRef = useRef(false);
@@ -170,6 +184,7 @@ export default function WalletScreen() {
   } | null>(null);
   const [consentUrl, setConsentUrl] = useState<string | null>(null);
   const [showConsent, setShowConsent] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // ====== Constantes de diseño ======
   const PADDING = hs(18);
@@ -179,8 +194,9 @@ export default function WalletScreen() {
 
   // ====== Resumen del pago ======
   const summary = useMemo(() => {
-    const amountUSD = Number(qr.amount ?? '0');
+    const amountUSD = Number(qr.amount ?? qr.finalCost ?? '0');
     const amountMXN = convertUSDtoMXN(amountUSD);
+    const elapsedTime = qr.elapsedTime ?? 0;
 
     return {
       amountUSD,              // Lo que paga el usuario en USD
@@ -189,6 +205,8 @@ export default function WalletScreen() {
       parking: qr.parking ?? 'Estacionamiento',
       nonce: qr.nonce ?? '—',
       timestamp: qr.ts ?? '—',
+      elapsedTime: elapsedTime,
+      formattedTime: formatTime(elapsedTime),
       raw: qr.raw,
       scheme: (qr.scheme ?? 'openpayment').toUpperCase(),
     };
@@ -218,6 +236,18 @@ export default function WalletScreen() {
       }
     })();
   }, []);
+
+  // ====== Función para redirigir a ExitScreen ======
+  const redirectToExitScreen = useCallback(() => {
+    console.log('🔄 Redirigiendo a ExitScreen...');
+
+    // Navegar a ExitScreen con los datos necesarios
+    navigation.navigate('ExitScreen', {
+      rawQrData: qr.raw || '',
+      referencia: `op_${flow.outgoingPaymentId || Date.now()}`,
+      monto: summary.amountUSD
+    });
+  }, [navigation, qr.raw, flow.outgoingPaymentId, summary.amountUSD]);
 
   // ====== Finalizar el pago ======
   const finalizeOnce = (fn: () => void) => {
@@ -267,16 +297,8 @@ export default function WalletScreen() {
       setShowConsent(false);
       setConsentUrl(null);
 
-      // 4. Mostrar confirmación con detalles de conversión
-      Alert.alert(
-        '¡Pago Completado! ✅',
-        `Estacionamiento pagado exitosamente.\n\n` +
-        `💵 Pagaste: ${formatUSD(summary.amountUSD)}\n` +
-        `💱 Convertido a: ~${formatMXN(summary.amountMXN)}\n` +
-        `📍 Cajón: ${summary.spot}\n\n` +
-        `ID: ${shorten(payResult.outgoingPayment?.id)}`,
-        [{ text: 'OK' }]
-      );
+      // 4. Mostrar modal personalizado de éxito
+      setShowSuccessModal(true);
 
     } catch (e: any) {
       console.error('❌ [finishOutgoing error]', e);
@@ -304,6 +326,8 @@ export default function WalletScreen() {
         usd: summary.amountUSD,
         mxn: summary.amountMXN,
         centavos: mxnCentavos,
+        tiempo: summary.formattedTime,
+        cajon: summary.spot,
       });
 
       // 1. Crear incoming payment (en MXN - ocelon1)
@@ -370,6 +394,7 @@ export default function WalletScreen() {
     setFlow({ status: 'initial' });
     setShowConsent(false);
     setConsentUrl(null);
+    navigation.goBack();
   };
 
   // ====== Handlers de WebView ======
@@ -410,26 +435,46 @@ export default function WalletScreen() {
     } catch { }
   }, [finalizePayment]);
 
+  // ====== Función para manejar el éxito del pago ======
+  const handlePaymentSuccess = () => {
+    setShowSuccessModal(false);
+    redirectToExitScreen();
+  };
+
   // ====== Render ======
   return (
     <View style={s.container}>
       <ScrollView contentContainerStyle={[s.scroll, { padding: PADDING }]} showsVerticalScrollIndicator={false} bounces>
 
-        {/* Header */}
+        {/* Header Mejorado */}
         <View style={[s.header, { maxWidth: MAX_W }]}>
           <View style={s.headerLeft}>
             <View style={[s.headerIcon, { borderRadius: hs(12) }]}>
               <Ionicons name="wallet-outline" size={ms(20)} color="#42b883" />
             </View>
-            <View>
-              <Text style={[s.title, { fontSize: ms(22) }]}>Pagar</Text>
-              <Text style={[s.subtitle, { fontSize: ms(12) }]}>Open Payments</Text>
+            <View style={s.headerTextContainer}>
+              <Text style={[s.title, { fontSize: ms(20) }]} numberOfLines={1}>
+                Pagar Estacionamiento
+              </Text>
+              <Text style={[s.subtitle, { fontSize: ms(11) }]} numberOfLines={1}>
+                Open Payments
+              </Text>
             </View>
           </View>
 
-          <View style={[s.badge, { borderRadius: 999, paddingHorizontal: hs(10), paddingVertical: vs(6) }]}>
-            <Ionicons name="car" size={ms(14)} color="#0b0b0c" />
-            <Text style={[s.badgeText, { fontSize: ms(12) }]}>{summary.spot}</Text>
+          <View style={[s.badge, {
+            maxWidth: hs(65),
+            minWidth: hs(45),
+            paddingHorizontal: hs(6),
+            paddingVertical: vs(3)
+          }]}>
+            <Ionicons name="car" size={ms(10)} color="#0b0b0c" />
+            <Text
+              style={[s.badgeText, { fontSize: ms(9) }]}
+              numberOfLines={1}
+            >
+              {summary.spot.length > 6 ? `${summary.spot.substring(0, 6)}` : summary.spot}
+            </Text>
           </View>
         </View>
 
@@ -442,6 +487,15 @@ export default function WalletScreen() {
             <Text style={[s.amount, { fontSize: ms(40) }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
               {formatUSD(summary.amountUSD)}
             </Text>
+          </View>
+
+          {/* Información de tiempo */}
+          <View style={s.timeInfo}>
+            <View style={s.timeRow}>
+              <Ionicons name="time-outline" size={ms(16)} color="#42b883" />
+              <Text style={s.timeLabel}>Tiempo de estacionamiento:</Text>
+              <Text style={s.timeValue}>{summary.formattedTime}</Text>
+            </View>
           </View>
 
           {/* Conversión */}
@@ -483,6 +537,7 @@ export default function WalletScreen() {
 
           <DetailRow
             hs={hs}
+            vs={vs}
             ms={ms}
             icon={<Ionicons name="location" size={ICON} color="#42b883" />}
             label="Cajón"
@@ -491,6 +546,7 @@ export default function WalletScreen() {
           />
           <DetailRow
             hs={hs}
+            vs={vs}
             ms={ms}
             icon={<Ionicons name="business-outline" size={ICON} color="#9aa0a6" />}
             label="Estacionamiento"
@@ -498,6 +554,15 @@ export default function WalletScreen() {
           />
           <DetailRow
             hs={hs}
+            vs={vs}
+            ms={ms}
+            icon={<Ionicons name="time-outline" size={ICON} color="#9aa0a6" />}
+            label="Tiempo total"
+            value={summary.formattedTime}
+          />
+          <DetailRow
+            hs={hs}
+            vs={vs}
             ms={ms}
             icon={<Ionicons name="finger-print-outline" size={ICON} color="#9aa0a6" />}
             label="Sesión"
@@ -505,8 +570,9 @@ export default function WalletScreen() {
           />
           <DetailRow
             hs={hs}
+            vs={vs}
             ms={ms}
-            icon={<Ionicons name="time-outline" size={ICON} color="#9aa0a6" />}
+            icon={<Ionicons name="calendar-outline" size={ICON} color="#9aa0a6" />}
             label="Timestamp"
             value={summary.timestamp}
           />
@@ -632,6 +698,20 @@ export default function WalletScreen() {
         </SafeAreaView>
       </Modal>
 
+      {/* Modal de éxito personalizado */}
+      <CustomSuccessModal
+        visible={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        onContinue={handlePaymentSuccess}
+        data={{
+          parking: summary.parking,
+          spot: summary.spot,
+          amount: summary.amountUSD,
+          time: summary.formattedTime,
+          paymentId: flow.outgoingPaymentId
+        }}
+      />
+
       {/* Fondo decorativo */}
       <Image
         source={require('../../assets/images/Logo_ocelon.jpg')}
@@ -651,14 +731,30 @@ export default function WalletScreen() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// Estilos (mantener igual)
+// Estilos (actualizados)
 // ═══════════════════════════════════════════════════════════════
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0b0b0c' },
   scroll: { alignItems: 'center', gap: 14 },
-  header: { width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  header: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    minHeight: 50,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+    minWidth: 0,
+  },
+  headerTextContainer: {
+    flex: 1,
+    minWidth: 0,
+  },
   headerIcon: {
     width: 40,
     height: 40,
@@ -672,10 +768,29 @@ const s = StyleSheet.create({
       android: { elevation: 4 },
     }),
   },
-  title: { color: '#fff', fontWeight: '800' },
-  subtitle: { color: '#bdbdbd' },
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#42b883' },
-  badgeText: { color: '#0b0b0c', fontWeight: '800' },
+  title: {
+    color: '#fff',
+    fontWeight: '800',
+    flexShrink: 1,
+  },
+  subtitle: {
+    color: '#bdbdbd',
+    flexShrink: 1,
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#42b883',
+    borderRadius: 999,
+    flexShrink: 0,
+    marginLeft: 8,
+  },
+  badgeText: {
+    color: '#0b0b0c',
+    fontWeight: '800',
+    flexShrink: 1,
+  },
 
   amountCard: {
     width: '100%',
@@ -690,6 +805,16 @@ const s = StyleSheet.create({
   amountLabel: { color: '#9f9faf', letterSpacing: 0.4, marginBottom: 4 },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   amount: { color: '#42b883', fontWeight: '900' },
+
+  timeInfo: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#202028',
+  },
+  timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
+  timeLabel: { color: '#9f9faf', fontSize: 12 },
+  timeValue: { color: '#42b883', fontSize: 14, fontWeight: '600', marginLeft: 'auto' },
 
   conversionBox: {
     backgroundColor: 'rgba(108, 99, 255, 0.1)',

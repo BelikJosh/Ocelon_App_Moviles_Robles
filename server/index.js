@@ -38,7 +38,7 @@ const {
   SENDER_WALLET_ADDRESS_URL,
   SENDER_KEY_ID,
   SENDER_PRIVATE_KEY_PATH,
-  FINISH_REDIRECT_URL = 'http://192.168.100.28:3001/op/finish', //CAMBIAR DIRECCION IP
+  FINISH_REDIRECT_URL = 'http://192.168.100.28:3001/op/finish', //192.168.100.28 192.168.100.217
 } = process.env;
 
 console.log('🔧 [SERVER] Configuración cargada:');
@@ -109,6 +109,61 @@ async function getWalletDocs() {
     console.error('❌ [HELPER] Error obteniendo wallet docs:', error);
     throw error;
   }
+}
+
+// ── Helper: Esperar a que el outgoing payment se complete
+async function waitForOutgoingPaymentCompletion(outgoingPaymentUrl, accessToken, maxAttempts = 30) {
+  console.log('⏳ [WAIT] Esperando completación del outgoing payment...');
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const payment = await senderClient.outgoingPayment.get({
+        url: outgoingPaymentUrl,
+        accessToken: accessToken
+      });
+
+      console.log(`🔄 [WAIT] Intento ${attempt}/${maxAttempts}:`, {
+        state: payment.state,
+        sentAmount: payment.sentAmount,
+        debitAmount: payment.debitAmount,
+        receiveAmount: payment.receiveAmount
+      });
+
+      // Si el estado está definido y no es pending, retornar
+      if (payment.state && payment.state !== 'pending') {
+        console.log('✅ [WAIT] Outgoing payment completado:', payment.state);
+        return payment;
+      }
+
+      // Si el monto enviado es igual al débito, considerar completado
+      if (payment.sentAmount && payment.debitAmount &&
+        payment.sentAmount.value === payment.debitAmount.value) {
+        console.log('✅ [WAIT] Outgoing payment completado por monto enviado');
+        return { ...payment, state: 'completed' };
+      }
+
+      // Si el monto recibido es igual al monto esperado, considerar completado
+      if (payment.receiveAmount && payment.receiveAmount.value !== '0') {
+        console.log('✅ [WAIT] Outgoing payment completado por monto recibido');
+        return { ...payment, state: 'completed' };
+      }
+
+      // Esperar 1 segundo antes del siguiente intento
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+    } catch (error) {
+      console.error(`❌ [WAIT] Error en intento ${attempt}:`, error.message);
+
+      // Si es error 404, puede significar que el pago no existe o fue eliminado
+      if (error.response?.status === 404) {
+        console.log('⚠️ [WAIT] Outgoing payment no encontrado, puede que ya se completó');
+        break;
+      }
+    }
+  }
+
+  console.log('❌ [WAIT] Timeout esperando completación del outgoing payment');
+  return null;
 }
 
 // ── Health & debug
@@ -580,7 +635,7 @@ app.post('/op/outgoing/finish', async (req, res) => {
   }
 });
 
-// ── 4) Crear Outgoing Payment - VERSIÓN MEJORADA CON COMPLETADO
+// ── 4) Crear Outgoing Payment - VERSIÓN MEJORADA CON VERIFICACIÓN DE ESTADO
 app.post('/op/outgoing/pay', async (req, res) => {
   try {
     console.log('💸 [PAY] Creando outgoing payment...');
@@ -815,33 +870,59 @@ app.post('/op/outgoing/pay', async (req, res) => {
       console.log('⚠️ [PAY] El outgoing payment se creó pero no se pudo completar el incoming payment');
     }
 
-    // Verificar estado final del outgoing payment
+    // ✅ CORRECCIÓN: ESPERAR A QUE EL OUTGOING PAYMENT SE COMPLETE
+    console.log('⏳ [PAY] Esperando completación del outgoing payment...');
     try {
-      const finalOutgoing = await senderClient.outgoingPayment.get({
-        url: `${senderWallet.resourceServer}/outgoing-payments/${outgoingPayment.id}`,
-        accessToken: grantAccessToken
-      });
+      const completedOutgoing = await waitForOutgoingPaymentCompletion(
+        outgoingPayment.id,
+        grantAccessToken,
+        20 // Menos intentos para ser más rápido
+      );
 
-      console.log('✅ [PAY] Estado final del outgoing payment:', {
-        id: finalOutgoing.id,
-        state: finalOutgoing.state,
-        debitAmount: finalOutgoing.debitAmount,
-        sentAmount: finalOutgoing.sentAmount,
-        receiveAmount: finalOutgoing.receiveAmount
-      });
+      if (completedOutgoing) {
+        console.log('✅ [PAY] Outgoing payment finalizado correctamente:', {
+          id: completedOutgoing.id,
+          state: completedOutgoing.state || 'completed', // Si sigue undefined, asumir completed
+          debitAmount: completedOutgoing.debitAmount,
+          sentAmount: completedOutgoing.sentAmount,
+          receiveAmount: completedOutgoing.receiveAmount
+        });
 
-    } catch (statusError) {
-      console.error('❌ [PAY] Error verificando estado final:', statusError);
+        // Actualizar el objeto outgoingPayment con el estado final
+        outgoingPayment = completedOutgoing;
+      } else {
+        console.log('⚠️ [PAY] No se pudo verificar la completación del outgoing payment');
+        // Inferir estado basado en montos
+        if (outgoingPayment.sentAmount && outgoingPayment.debitAmount &&
+          outgoingPayment.sentAmount.value === outgoingPayment.debitAmount.value) {
+          outgoingPayment.state = 'completed';
+          console.log('🔄 [PAY] Estado inferido como completed por montos');
+        }
+      }
+
+    } catch (waitError) {
+      console.error('❌ [PAY] Error esperando completación:', waitError);
+      console.log('⚠️ [PAY] Continuando sin verificación de estado final');
     }
 
     return res.json({
       ok: true,
-      outgoingPayment,
+      outgoingPayment: {
+        id: outgoingPayment.id,
+        state: outgoingPayment.state || 'processing', // Estado por defecto si sigue undefined
+        debitAmount: outgoingPayment.debitAmount,
+        sentAmount: outgoingPayment.sentAmount,
+        receiveAmount: outgoingPayment.receiveAmount,
+        // Incluir todos los datos relevantes
+        ...outgoingPayment
+      },
       quote: quote ? {
         sendAmount: quote.sendAmount,
         receiveAmount: quote.receiveAmount
       } : undefined,
-      message: 'Pago procesado y completado exitosamente'
+      message: outgoingPayment.state === 'completed' ?
+        'Pago procesado y completado exitosamente' :
+        'Pago procesado - verificando estado final'
     });
 
   } catch (e) {
@@ -868,45 +949,97 @@ app.post('/op/outgoing/pay', async (req, res) => {
   }
 });
 
-// ── 5) Verificar estado de pago
+// ── 5) Verificar estado de pago - VERSIÓN MEJORADA
 app.get('/op/payment/status/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const { grantAccessToken } = req.query; // Opcional: token específico
+
     console.log('🔍 [STATUS] Verificando estado de pago:', id);
 
     const { senderWallet } = await getWalletDocs();
 
-    // Crear grant para leer outgoing payment
-    const readGrant = await senderClient.grant.request(
-      { url: senderWallet.authServer },
-      {
-        access_token: {
-          access: [{ type: 'outgoing-payment', actions: ['read'] }]
-        }
-      }
-    );
+    let accessToken = grantAccessToken;
 
-    if (!isFinalizedGrant(readGrant)) {
-      throw new Error('Read grant no finalizado');
+    // Si no viene token, crear uno nuevo
+    if (!accessToken) {
+      const readGrant = await senderClient.grant.request(
+        { url: senderWallet.authServer },
+        {
+          access_token: {
+            access: [{ type: 'outgoing-payment', actions: ['read'] }]
+          }
+        }
+      );
+
+      if (!isFinalizedGrant(readGrant)) {
+        throw new Error('Read grant no finalizado');
+      }
+      accessToken = readGrant.access_token.value;
     }
 
-    const outgoingPayment = await senderClient.outgoingPayment.get({
-      url: `${senderWallet.resourceServer}/outgoing-payments/${id}`,
-      accessToken: readGrant.access_token.value
+    let outgoingPayment;
+    let outgoingPaymentUrl;
+
+    // Determinar la URL correcta
+    if (id.startsWith('http')) {
+      outgoingPaymentUrl = id;
+    } else {
+      outgoingPaymentUrl = `${senderWallet.resourceServer}/outgoing-payments/${id}`;
+    }
+
+    // Obtener el payment
+    outgoingPayment = await senderClient.outgoingPayment.get({
+      url: outgoingPaymentUrl,
+      accessToken: accessToken
     });
 
-    console.log('✅ [STATUS] Estado obtenido:', outgoingPayment.state);
+    console.log('✅ [STATUS] Estado obtenido:', {
+      state: outgoingPayment.state,
+      sentAmount: outgoingPayment.sentAmount,
+      debitAmount: outgoingPayment.debitAmount,
+      receiveAmount: outgoingPayment.receiveAmount
+    });
+
+    // Lógica mejorada para determinar el estado final
+    let finalState = outgoingPayment.state;
+
+    // Si el estado es undefined pero el monto enviado es igual al débito, considerar completado
+    if (!finalState && outgoingPayment.sentAmount && outgoingPayment.debitAmount &&
+      outgoingPayment.sentAmount.value === outgoingPayment.debitAmount.value) {
+      finalState = 'completed';
+      console.log('🔄 [STATUS] Estado inferido como completed por montos');
+    }
+
+    // Si el monto recibido es mayor que 0, considerar completado
+    if (!finalState && outgoingPayment.receiveAmount && outgoingPayment.receiveAmount.value !== '0') {
+      finalState = 'completed';
+      console.log('🔄 [STATUS] Estado inferido como completed por monto recibido');
+    }
+
+    // Si después de todo sigue undefined, usar 'processing'
+    if (!finalState) {
+      finalState = 'processing';
+      console.log('🔄 [STATUS] Estado establecido como processing');
+    }
 
     res.json({
       ok: true,
       payment: {
         id: outgoingPayment.id,
-        state: outgoingPayment.state,
+        state: finalState,
         debitAmount: outgoingPayment.debitAmount,
         sentAmount: outgoingPayment.sentAmount,
         receiveAmount: outgoingPayment.receiveAmount,
         createdAt: outgoingPayment.createdAt,
         updatedAt: outgoingPayment.updatedAt
+      },
+      diagnostic: {
+        hasState: !!outgoingPayment.state,
+        amountsMatch: outgoingPayment.sentAmount?.value === outgoingPayment.debitAmount?.value,
+        hasReceiveAmount: outgoingPayment.receiveAmount?.value !== '0',
+        stateInferred: !outgoingPayment.state && finalState === 'completed',
+        finalState: finalState
       }
     });
 
@@ -915,6 +1048,49 @@ app.get('/op/payment/status/:id', async (req, res) => {
     res.status(500).json({
       ok: false,
       error: e?.message || 'Error verificando estado'
+    });
+  }
+});
+
+// ── 6) Forzar verificación de estado de pago
+app.post('/op/payment/verify', async (req, res) => {
+  try {
+    const { outgoingPaymentUrl, grantAccessToken } = req.body;
+
+    if (!outgoingPaymentUrl || !grantAccessToken) {
+      return res.status(400).json({
+        ok: false,
+        error: 'outgoingPaymentUrl y grantAccessToken requeridos'
+      });
+    }
+
+    console.log('🔍 [VERIFY] Forzando verificación de pago:', outgoingPaymentUrl);
+
+    const completedPayment = await waitForOutgoingPaymentCompletion(
+      outgoingPaymentUrl,
+      grantAccessToken,
+      10 // Menos intentos para verificación rápida
+    );
+
+    if (completedPayment) {
+      res.json({
+        ok: true,
+        payment: completedPayment,
+        message: 'Pago verificado exitosamente'
+      });
+    } else {
+      res.json({
+        ok: false,
+        error: 'No se pudo verificar el estado del pago',
+        payment: { state: 'unknown' }
+      });
+    }
+
+  } catch (e) {
+    console.error('❌ [VERIFY] Error:', e?.message);
+    res.status(500).json({
+      ok: false,
+      error: e?.message || 'Error verificando pago'
     });
   }
 });

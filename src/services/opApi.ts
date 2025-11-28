@@ -1,4 +1,4 @@
-// services/opApi.ts - VERSIÓN CORREGIDA
+// services/opApi.ts - VERSIÓN COMPLETA MEJORADA
 const BASE = 'http://192.168.100.28:3001'; //CAMBIAR DIRECCION IP
 
 async function jfetch(input: RequestInfo, init?: RequestInit) {
@@ -37,6 +37,19 @@ export const opApi = {
   wallets: () => {
     console.log('📋 [API] Obteniendo wallets...');
     return jfetch(`${BASE}/op/wallets`);
+  },
+
+  // NUEVO: Obtener balance del usuario
+  getUserBalance: async () => {
+    try {
+      console.log('💰 [API] Obteniendo balance del usuario...');
+      const response = await jfetch(`${BASE}/op/wallets`);
+      // Asumiendo que la respuesta tiene la estructura del sender wallet
+      return response.senderWallet.balance || 0;
+    } catch (error) {
+      console.error('❌ Error obteniendo balance:', error);
+      return 0;
+    }
   },
 
   createIncoming: (receiveValueMinor: string) => {
@@ -93,5 +106,14 @@ export const opApi = {
   debugIncoming: (paymentId: string) => {
     console.log('🔍 [API] Debug incoming payment:', paymentId);
     return jfetch(`${BASE}/op/debug/incoming/${paymentId}`);
+  },
+
+  // NUEVO: Verificar estado de pago
+  checkPaymentStatus: (paymentId: string, grantAccessToken?: string) => {
+    console.log('🔍 [API] Verificando estado de pago:', paymentId);
+    const url = grantAccessToken
+      ? `${BASE}/op/payment/status/${paymentId}?grantAccessToken=${grantAccessToken}`
+      : `${BASE}/op/payment/status/${paymentId}`;
+    return jfetch(url);
   }
 };
