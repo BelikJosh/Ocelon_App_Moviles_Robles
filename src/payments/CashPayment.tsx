@@ -28,6 +28,9 @@ type Props = {
 const BASE_W = 375;
 const BASE_H = 812;
 
+// Tipo de cambio USD a MXN (aproximado)
+const USD_TO_MXN = 17.5;
+
 export default function CashPayment({ navigation, route }: Props) {
   const { rawQrData } = route.params;
   const insets = useSafeAreaInsets();
@@ -41,6 +44,9 @@ export default function CashPayment({ navigation, route }: Props) {
   const referencia = `ocelon_cash_${Date.now()}`;
   const [total, setTotal] = useState(getTimer().cost);
 
+  // Convertir USD a MXN
+  const totalInMXN = total * USD_TO_MXN;
+
   // Suscribirse a cambios del timer para actualizar el total
   useEffect(() => {
     const unsub = onTimerChange(() => {
@@ -52,7 +58,7 @@ export default function CashPayment({ navigation, route }: Props) {
 
   const qrPayload = JSON.stringify({
     tipo: "cajero",
-    monto: total,
+    monto: totalInMXN,
     referencia,
     rawQrData: rawQrData || null,
   });
@@ -138,7 +144,7 @@ export default function CashPayment({ navigation, route }: Props) {
               <Text style={s.amountLabel}>Total a Pagar</Text>
             </View>
             <Text style={[s.amountValue, { fontSize: ms(42) }]}>
-              ${total.toFixed(2)}
+              ${totalInMXN.toFixed(2)}
             </Text>
             <Text style={s.amountCurrency}>MXN</Text>
 

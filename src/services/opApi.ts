@@ -1,5 +1,5 @@
 // services/opApi.ts - VERSIÓN COMPLETA MEJORADA
-const BASE = 'http://192.168.100.28:3001'; //CAMBIAR DIRECCION IP
+const BASE = 'http://192.168.100.29:3001'; //CAMBIAR DIRECCION IP
 
 async function jfetch(input: RequestInfo, init?: RequestInit) {
   try {

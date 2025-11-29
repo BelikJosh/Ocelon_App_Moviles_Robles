@@ -4,7 +4,6 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Modal from "react-native-modal";
-import { useAuthState } from "../hooks/useAuthState";
 import { RootStackParamList } from "../navegation/types/navigation";
 
 export type PayModalProps = {
@@ -24,12 +23,25 @@ export default function PayModal({
   navigation,
   onOpenPaymentsPress
 }: PayModalProps) {
-  const { usuario, esInvitado, loading } = useAuthState();
+  // Ya no usamos useAuthState aquí - la verificación se hace en TimerScreen
+  // antes de mostrar el modal
 
-  // Solo mostrar modal si el usuario está logueado y no es invitado
-  const shouldShowModal = !loading && usuario && !esInvitado;
+  const handleDigitalPayment = () => {
+    console.log('🔵 Navegando a DigitalPayment');
+    onClose();
+    // Pequeño delay para asegurar que el modal se cierre antes de navegar
+    setTimeout(() => {
+      navigation.navigate("DigitalPayment", { monto: total, rawQrData });
+    }, 100);
+  };
 
-  if (!shouldShowModal) return null;
+  const handleCashPayment = () => {
+    console.log('🟠 Navegando a CashPayment');
+    onClose();
+    setTimeout(() => {
+      navigation.navigate("CashPayment", { monto: total, rawQrData });
+    }, 100);
+  };
 
   return (
     <Modal
@@ -48,30 +60,27 @@ export default function PayModal({
         </View>
 
         <View style={styles.buttonsContainer}>
+          {/* Pago Electrónico / Digital */}
           <TouchableOpacity
             style={[styles.button, styles.electronicButton]}
-            onPress={() => {
-              onClose();
-              navigation.navigate("DigitalPayment", { monto: total, rawQrData });
-            }}
+            onPress={handleDigitalPayment}
           >
             <Ionicons name="card-outline" size={24} color="#fff" />
             <Text style={styles.buttonText}>Pago Electrónico</Text>
             <Text style={styles.buttonSubtext}>Tarjetas, Apple Pay, PayPal</Text>
           </TouchableOpacity>
 
+          {/* Pago en Efectivo */}
           <TouchableOpacity
             style={[styles.button, styles.cashButton]}
-            onPress={() => {
-              onClose();
-              navigation.navigate("CashPayment", { monto: total, rawQrData });
-            }}
+            onPress={handleCashPayment}
           >
             <Ionicons name="cash-outline" size={24} color="#fff" />
             <Text style={styles.buttonText}>Pago en Efectivo</Text>
             <Text style={styles.buttonSubtext}>Cajeros autorizados</Text>
           </TouchableOpacity>
 
+          {/* Open Payments */}
           <TouchableOpacity
             style={[styles.button, styles.openPaymentsButton]}
             onPress={onOpenPaymentsPress}

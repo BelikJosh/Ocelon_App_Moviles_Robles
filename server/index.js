@@ -38,7 +38,7 @@ const {
   SENDER_WALLET_ADDRESS_URL,
   SENDER_KEY_ID,
   SENDER_PRIVATE_KEY_PATH,
-  FINISH_REDIRECT_URL = 'http://192.168.100.28:3001/op/finish', //192.168.100.28 192.168.100.217
+  FINISH_REDIRECT_URL = 'http://192.168.100.29:3001/op/finish', //192.168.100.29 192.168.100.217
 } = process.env;
 
 console.log('🔧 [SERVER] Configuración cargada:');

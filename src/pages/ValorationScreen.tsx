@@ -35,47 +35,8 @@ interface ValorationData {
 const BASE_W = 375;
 const BASE_H = 812;
 
-// Helper para obtener el nombre legible del método de pago
-const getPaymentMethodName = (method?: string): string => {
-  switch (method) {
-    case 'open_payments':
-      return 'Open Payments';
-    case 'digital':
-      return 'Pago Digital';
-    case 'cash':
-      return 'Efectivo';
-    default:
-      return method || 'No especificado';
-  }
-};
-
-// Helper para obtener el ícono del método de pago
-const getPaymentMethodIcon = (method?: string): string => {
-  switch (method) {
-    case 'open_payments':
-      return 'flash';
-    case 'digital':
-      return 'card';
-    case 'cash':
-      return 'cash';
-    default:
-      return 'wallet';
-  }
-};
-
-// Helper para obtener el color del método de pago
-const getPaymentMethodColor = (method?: string): string => {
-  switch (method) {
-    case 'open_payments':
-      return '#6C63FF';
-    case 'digital':
-      return '#42b883';
-    case 'cash':
-      return '#ffaa00';
-    default:
-      return '#42b883';
-  }
-};
+// Tipo de cambio USD a MXN (aproximado)
+const USD_TO_MXN = 17.5;
 
 export default function ValorationScreen() {
   const navigation = useNavigation<any>();
@@ -101,6 +62,9 @@ export default function ValorationScreen() {
   const [comment, setComment] = useState('');
   const [showThankYouModal, setShowThankYouModal] = useState(false);
   const [wasSkipped, setWasSkipped] = useState(false);
+
+  // Convertir USD a MXN
+  const amountInMXN = (data.amount || 0) * USD_TO_MXN;
 
   const handleSubmit = () => {
     // Aquí podrías enviar la valoración a tu backend
@@ -141,10 +105,6 @@ export default function ValorationScreen() {
   const PADDING = hs(20);
   const CARD_RADIUS = hs(16);
   const MAX_W = 600;
-
-  const paymentMethodName = getPaymentMethodName(data.paymentMethod);
-  const paymentMethodIcon = getPaymentMethodIcon(data.paymentMethod);
-  const paymentMethodColor = getPaymentMethodColor(data.paymentMethod);
 
   return (
     <View style={s.container}>
@@ -224,21 +184,8 @@ export default function ValorationScreen() {
                   <Text style={s.detailLabel}>Total pagado</Text>
                 </View>
                 <Text style={[s.detailValue, { color: '#42b883', fontWeight: '800' }]}>
-                  ${data.amount?.toFixed(2)} USD
+                  ${amountInMXN.toFixed(2)} MXN
                 </Text>
-              </View>
-
-              {/* Método de pago con color dinámico */}
-              <View style={[s.detailRow, s.paymentMethodRow]}>
-                <View style={s.detailLeft}>
-                  <Ionicons name={paymentMethodIcon as any} size={ms(18)} color={paymentMethodColor} />
-                  <Text style={s.detailLabel}>Método de pago</Text>
-                </View>
-                <View style={[s.paymentBadge, { backgroundColor: `${paymentMethodColor}20`, borderColor: `${paymentMethodColor}40` }]}>
-                  <Text style={[s.paymentBadgeText, { color: paymentMethodColor }]}>
-                    {paymentMethodName}
-                  </Text>
-                </View>
               </View>
 
               {/* Referencia si existe */}
@@ -361,12 +308,12 @@ export default function ValorationScreen() {
       >
         <View style={s.modalOverlay}>
           <View style={[s.thankYouModal, { maxWidth: width * 0.85, borderRadius: CARD_RADIUS }]}>
-            {/* Ícono de éxito */}
+            {/* Logo de Ocelon en lugar del ícono */}
             <View style={s.modalIconContainer}>
-              <Ionicons
-                name={wasSkipped ? "checkmark-circle" : "star"}
-                size={ms(60)}
-                color={wasSkipped ? "#42b883" : "#FFD700"}
+              <Image
+                source={require('../../assets/images/Logo_ocelon.jpg')}
+                style={[s.modalLogo, { width: ms(70), height: ms(70), borderRadius: ms(14) }]}
+                resizeMode="cover"
               />
             </View>
 
@@ -390,13 +337,7 @@ export default function ValorationScreen() {
               <View style={s.modalSummaryRow}>
                 <Text style={s.modalSummaryLabel}>Total pagado:</Text>
                 <Text style={[s.modalSummaryValue, { color: '#42b883' }]}>
-                  ${data.amount?.toFixed(2)} USD
-                </Text>
-              </View>
-              <View style={s.modalSummaryRow}>
-                <Text style={s.modalSummaryLabel}>Método:</Text>
-                <Text style={[s.modalSummaryValue, { color: paymentMethodColor }]}>
-                  {paymentMethodName}
+                  ${amountInMXN.toFixed(2)} MXN
                 </Text>
               </View>
               {!wasSkipped && rating > 0 && (
@@ -416,14 +357,17 @@ export default function ValorationScreen() {
               )}
             </View>
 
-            <TouchableOpacity
-              style={[s.closeButton, { paddingVertical: vs(14), borderRadius: hs(12) }]}
-              onPress={handleCloseThankYou}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="home" size={ms(18)} color="#0b0b0c" />
-              <Text style={s.closeButtonText}>Volver al Inicio</Text>
-            </TouchableOpacity>
+            {/* Botón centrado */}
+            <View style={s.modalButtonContainer}>
+              <TouchableOpacity
+                style={[s.closeButton, { paddingVertical: vs(14), borderRadius: hs(12) }]}
+                onPress={handleCloseThankYou}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="home" size={ms(18)} color="#0b0b0c" />
+                <Text style={s.closeButtonText}>Volver al Inicio</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -518,22 +462,6 @@ const s = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
-  },
-  paymentMethodRow: {
-    paddingTop: 12,
-    marginTop: 4,
-    borderTopWidth: 1,
-    borderTopColor: '#202028',
-  },
-  paymentBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  paymentBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
   },
   referenceValue: {
     color: '#9aa0a6',
@@ -676,6 +604,11 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
+    borderWidth: 2,
+    borderColor: '#42b883',
+  },
+  modalLogo: {
+    borderWidth: 0,
   },
   thankYouTitle: {
     color: '#fff',
@@ -715,13 +648,17 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     gap: 2,
   },
-  closeButton: {
+  modalButtonContainer: {
     width: '100%',
+    alignItems: 'center',
+  },
+  closeButton: {
     backgroundColor: '#42b883',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    paddingHorizontal: 32,
   },
   closeButtonText: {
     color: '#0b0b0c',

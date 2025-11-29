@@ -44,6 +44,9 @@ const BASE_W = 375;
 const BASE_H = 812;
 const TOTAL_SECONDS = 15;
 
+// Tipo de cambio USD a MXN (aproximado)
+const USD_TO_MXN = 17.5;
+
 export default function ExitScreen({ navigation, route }: Props) {
   const { rawQrData, monto, referencia } = route.params;
   const insets = useSafeAreaInsets();
@@ -58,6 +61,9 @@ export default function ExitScreen({ navigation, route }: Props) {
   const startTimeRef = useRef(Date.now());
   const prevColorRef = useRef<string>("");
   const hasNavigatedRef = useRef(false); // Nueva ref para controlar navegación
+
+  // Convertir USD a MXN
+  const montoInMXN = (monto || 0) * USD_TO_MXN;
 
   const getTimerColor = (sec: number) => {
     if (sec >= 11) return "#42b883"; // verde
@@ -212,7 +218,7 @@ export default function ExitScreen({ navigation, route }: Props) {
           <View style={s.paymentInfo}>
             <View style={s.paymentRow}>
               <Text style={s.paymentLabel}>Monto pagado</Text>
-              <Text style={s.paymentValue}>${monto?.toFixed(2)} USD</Text>
+              <Text style={s.paymentValue}>${montoInMXN.toFixed(2)} MXN</Text>
             </View>
             {referencia && (
               <View style={s.paymentRow}>

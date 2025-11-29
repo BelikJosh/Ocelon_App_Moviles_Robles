@@ -1,31 +1,163 @@
 // screens/DigitalPayment.tsx
-// Pantalla de pago digital con tarjetas y métodos rápidos
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import React, { useEffect, useState } from "react";
 import {
-  Alert,
   Image,
   Modal,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   useWindowDimensions,
-  View,
+  View
 } from "react-native";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AddCardModal from '../components/AddCardModal';
 import { useAuthState } from "../hooks/useAuthState";
 import { RootStackParamList } from "../navegation/types/navigation";
 import { getTimer, onTimerChange, stopTimer } from "../utils/TimerStore";
 
-type Card = { id: string; brand: string; last4: string; type: "credit" | "debit" };
+type Card = { 
+  id: string; 
+  brand: string; 
+  last4: string; 
+  type: "credit" | "debit";
+  cardholderName?: string;
+};
 
 // Constantes de diseño
 const BASE_W = 375;
 const BASE_H = 812;
+const USD_TO_MXN = 17.5;
+
+// Componente Modal Personalizado para Alertas
+const CustomAlertModal = ({ 
+  visible, 
+  onClose, 
+  title, 
+  message, 
+  type = 'success',
+  buttons = [{ text: 'OK', onPress: () => {} }] 
+}: {
+  visible: boolean;
+  onClose: () => void;
+  title: string;
+  message: string;
+  type?: 'success' | 'error' | 'warning' | 'info';
+  buttons?: { text: string; onPress: () => void }[];
+}) => {
+  const getIcon = () => {
+    switch (type) {
+      case 'success': return 'checkmark-circle';
+      case 'error': return 'close-circle';
+      case 'warning': return 'warning';
+      default: return 'information-circle';
+    }
+  };
+
+  const getIconColor = () => {
+    switch (type) {
+      case 'success': return '#42b883';
+      case 'error': return '#ff6b6b';
+      case 'warning': return '#ffa726';
+      default: return '#42b883';
+    }
+  };
+
+  // Función para determinar el estilo del botón basado en su texto
+  const getButtonStyle = (buttonText: string, index: number) => {
+    // Para modales de confirmación (tipo 'info')
+    if (type === 'info') {
+      if (buttonText.toLowerCase().includes('cancelar') || buttonText.toLowerCase().includes('cancel')) {
+        return alertStyles.cancelButton;
+      }
+      if (buttonText.toLowerCase().includes('pagar') || buttonText.toLowerCase().includes('pay') || buttonText.toLowerCase().includes('confirm')) {
+        return alertStyles.payButton;
+      }
+    }
+
+    // Para otros tipos de modales
+    if (index === 0) {
+      switch (type) {
+        case 'success': return alertStyles.primaryButton;
+        case 'error': return alertStyles.dangerButton;
+        case 'warning': return alertStyles.warningButton;
+        default: return alertStyles.primaryButton;
+      }
+    } else {
+      return alertStyles.secondaryButton;
+    }
+  };
+
+  const getButtonTextStyle = (buttonText: string, index: number) => {
+    if (type === 'info') {
+      if (buttonText.toLowerCase().includes('pagar') || buttonText.toLowerCase().includes('pay') || buttonText.toLowerCase().includes('confirm')) {
+        return alertStyles.payButtonText;
+      }
+    }
+    
+    if (index === 0 && (type === 'success' || type === 'info')) {
+      return alertStyles.primaryButtonText;
+    }
+    
+    return alertStyles.buttonText;
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade">
+      <View style={alertStyles.overlay}>
+        <View style={alertStyles.container}>
+          {/* Header con Logo */}
+          <View style={alertStyles.header}>
+            <Image
+              source={require('../../assets/images/Logo_ocelon.jpg')}
+              style={alertStyles.logo}
+              resizeMode="contain"
+            />
+            <View style={alertStyles.titleContainer}>
+              <Ionicons name={getIcon()} size={28} color={getIconColor()} />
+              <Text style={alertStyles.title}>{title}</Text>
+            </View>
+          </View>
+
+          {/* Mensaje */}
+          <Text style={alertStyles.message}>{message}</Text>
+
+          {/* Botones */}
+          <View style={alertStyles.buttonsContainer}>
+            {buttons.map((button, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  alertStyles.button,
+                  getButtonStyle(button.text, index)
+                ]}
+                onPress={() => {
+                  button.onPress();
+                  onClose();
+                }}
+              >
+                {/* Agregar íconos a los botones de confirmación */}
+                {type === 'info' && button.text.toLowerCase().includes('pagar') && (
+                  <Ionicons name="lock-closed" size={16} color="#0b0b0c" style={alertStyles.buttonIcon} />
+                )}
+                {type === 'info' && button.text.toLowerCase().includes('cancelar') && (
+                  <Ionicons name="close" size={16} color="#ff6b6b" style={alertStyles.buttonIcon} />
+                )}
+                
+                <Text style={getButtonTextStyle(button.text, index)}>
+                  {button.text}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
 
 export default function DigitalPayment() {
   const route = useRoute<RouteProp<RootStackParamList, "DigitalPayment">>();
@@ -44,10 +176,16 @@ export default function DigitalPayment() {
   const [cards, setCards] = useState<Card[]>([]);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newCardNumber, setNewCardNumber] = useState("");
-  const [newCardBrand, setNewCardBrand] = useState("");
-  const [newCardType, setNewCardType] = useState<"credit" | "debit">("credit");
   const [total, setTotal] = useState(initialMonto);
+
+  // Estados para modales personalizados
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [showErrorAlert, setShowErrorAlert] = useState(false);
+  const [showConfirmAlert, setShowConfirmAlert] = useState(false);
+  const [alertData, setAlertData] = useState({ title: '', message: '' });
+
+  // Convertir USD a MXN
+  const totalInMXN = total * USD_TO_MXN;
 
   // Actualiza monto dinámicamente desde TimerStore
   useEffect(() => {
@@ -63,28 +201,32 @@ export default function DigitalPayment() {
     if (!usuario) return;
 
     const savedCards: Card[] = [
-      { id: "1", brand: "Mastercard", last4: "2681", type: "credit" },
-      { id: "2", brand: "BBVA", last4: "9854", type: "debit" },
-      { id: "3", brand: "Visa", last4: "4521", type: "credit" },
+      { id: "1", brand: "Mastercard", last4: "2681", type: "credit", cardholderName: "JUAN PEREZ" },
+      { id: "2", brand: "BBVA", last4: "9854", type: "debit", cardholderName: "MARIA GARCIA" },
+      { id: "3", brand: "Visa", last4: "4521", type: "credit", cardholderName: "CARLOS LOPEZ" },
     ];
     setCards(savedCards);
   }, [usuario]);
 
-  const handleAddCard = () => {
-    if (!newCardNumber || !newCardBrand)
-      return Alert.alert("Error", "Complete los datos de la tarjeta");
-
-    const newCard: Card = {
+  // Función para manejar la adición de nueva tarjeta desde el modal
+  const handleAddCardFromModal = (newCard: any) => {
+    const cardToAdd: Card = {
       id: Math.random().toString(),
-      brand: newCardBrand,
-      last4: newCardNumber.slice(-4),
-      type: newCardType,
+      brand: newCard.brand,
+      last4: newCard.last4,
+      type: "credit",
+      cardholderName: newCard.cardholderName
     };
-    setCards([...cards, newCard]);
-    setShowAddModal(false);
-    setNewCardNumber("");
-    setNewCardBrand("");
-    setNewCardType("credit");
+    
+    setCards([...cards, cardToAdd]);
+    setSelectedCard(cardToAdd);
+    
+    // Mostrar alerta personalizada de éxito
+    setAlertData({
+      title: "¡Tarjeta Agregada!",
+      message: `Tu tarjeta ${newCard.brand} •••• ${newCard.last4} ha sido agregada exitosamente.`
+    });
+    setShowSuccessAlert(true);
   };
 
   const handleGoBack = () => {
@@ -94,16 +236,38 @@ export default function DigitalPayment() {
   // Función que simula pago y redirige a ExitScreen
   const handlePayment = (method: string) => {
     if (!usuario) {
-      Alert.alert("Error", "Debe iniciar sesión para realizar un pago digital");
+      setAlertData({
+        title: "Error",
+        message: "Debe iniciar sesión para realizar un pago digital"
+      });
+      setShowErrorAlert(true);
       return;
     }
 
     let paymentMethod = method;
     if (method === "card") {
-      if (!selectedCard) return Alert.alert("Error", "Seleccione una tarjeta");
+      if (!selectedCard) {
+        setAlertData({
+          title: "Error",
+          message: "Seleccione una tarjeta para continuar con el pago"
+        });
+        setShowErrorAlert(true);
+        return;
+      }
       paymentMethod = `${selectedCard.brand} •••• ${selectedCard.last4}`;
+      
+      // Mostrar confirmación de pago personalizada
+      setAlertData({
+        title: "Confirmar Pago",
+        message: `¿Estás seguro de pagar $${totalInMXN.toFixed(2)} con tu tarjeta ${selectedCard.brand} •••• ${selectedCard.last4}?`
+      });
+      setShowConfirmAlert(true);
+    } else {
+      processPayment(paymentMethod);
     }
+  };
 
+  const processPayment = (paymentMethod: string) => {
     stopTimer();
 
     const finalQrData = rawQrData || `digital_${Date.now()}_${paymentMethod}`;
@@ -115,12 +279,14 @@ export default function DigitalPayment() {
     });
   };
 
+  // Función para obtener el ícono/logo de la tarjeta
   const getCardIcon = (brand: string) => {
     const brandLower = brand.toLowerCase();
-    if (brandLower.includes('visa')) return 'cc-visa';
-    if (brandLower.includes('master')) return 'cc-mastercard';
-    if (brandLower.includes('amex')) return 'cc-amex';
-    return 'credit-card';
+    if (brandLower.includes('visa')) return { icon: 'cc-visa', color: '#1a1f71', emoji: '💳' };
+    if (brandLower.includes('master')) return { icon: 'cc-mastercard', color: '#eb001b', emoji: '💳' };
+    if (brandLower.includes('amex')) return { icon: 'cc-amex', color: '#2e77bc', emoji: '💳' };
+    if (brandLower.includes('bbva')) return { icon: 'bank', color: '#004481', emoji: '🏦' };
+    return { icon: 'credit-card', color: '#42b883', emoji: '💳' };
   };
 
   const getPaymentIcon = (method: string) => {
@@ -185,9 +351,9 @@ export default function DigitalPayment() {
               <Text style={s.amountLabel}>Total a Pagar</Text>
             </View>
             <Text style={[s.amountValue, { fontSize: ms(42) }]}>
-              ${total.toFixed(2)}
+              ${totalInMXN.toFixed(2)}
             </Text>
-            <Text style={s.amountCurrency}>USD</Text>
+            <Text style={s.amountCurrency}>MXN</Text>
           </View>
 
           {/* Sección de pago rápido */}
@@ -250,56 +416,65 @@ export default function DigitalPayment() {
                 </TouchableOpacity>
               </View>
             ) : (
-              cards.map((card, index) => (
-                <TouchableOpacity
-                  key={card.id}
-                  style={[
-                    s.cardRow,
-                    index !== cards.length - 1 && s.cardRowBorder,
-                    selectedCard?.id === card.id && s.cardRowSelected
-                  ]}
-                  onPress={() => setSelectedCard(card)}
-                  activeOpacity={0.7}
-                >
-                  <View style={s.cardRowLeft}>
-                    <View style={[
-                      s.cardIconContainer,
-                      selectedCard?.id === card.id && s.cardIconSelected
-                    ]}>
-                      <MaterialCommunityIcons
-                        name={getCardIcon(card.brand) as any}
-                        size={ms(24)}
-                        color={selectedCard?.id === card.id ? "#42b883" : "#9aa0a6"}
-                      />
-                    </View>
-                    <View>
-                      <Text style={[
-                        s.cardBrand,
-                        selectedCard?.id === card.id && s.cardBrandSelected
+              cards.map((card, index) => {
+                const cardIcon = getCardIcon(card.brand);
+                return (
+                  <TouchableOpacity
+                    key={card.id}
+                    style={[
+                      s.cardRow,
+                      index !== cards.length - 1 && s.cardRowBorder,
+                      selectedCard?.id === card.id && s.cardRowSelected
+                    ]}
+                    onPress={() => setSelectedCard(card)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={s.cardRowLeft}>
+                      <View style={[
+                        s.cardIconContainer,
+                        selectedCard?.id === card.id && s.cardIconSelected
                       ]}>
-                        {card.brand}
-                      </Text>
-                      <Text style={s.cardNumber}>•••• •••• •••• {card.last4}</Text>
+                        <MaterialCommunityIcons
+                          name={cardIcon.icon as any}
+                          size={ms(24)}
+                          color={selectedCard?.id === card.id ? "#42b883" : cardIcon.color}
+                        />
+                      </View>
+                      <View style={s.cardInfo}>
+                        <View style={s.cardBrandRow}>
+                          <Text style={[
+                            s.cardBrand,
+                            selectedCard?.id === card.id && s.cardBrandSelected
+                          ]}>
+                            {card.brand}
+                          </Text>
+                          <Text style={s.cardEmoji}>{cardIcon.emoji}</Text>
+                        </View>
+                        <Text style={s.cardNumber}>•••• •••• •••• {card.last4}</Text>
+                        {card.cardholderName && (
+                          <Text style={s.cardholderName}>{card.cardholderName}</Text>
+                        )}
+                      </View>
                     </View>
-                  </View>
-                  <View style={s.cardRowRight}>
-                    <View style={[
-                      s.cardTypeBadge,
-                      card.type === 'debit' && s.cardTypeBadgeDebit
-                    ]}>
-                      <Text style={[
-                        s.cardTypeText,
-                        card.type === 'debit' && s.cardTypeTextDebit
+                    <View style={s.cardRowRight}>
+                      <View style={[
+                        s.cardTypeBadge,
+                        card.type === 'debit' && s.cardTypeBadgeDebit
                       ]}>
-                        {card.type === 'credit' ? 'Crédito' : 'Débito'}
-                      </Text>
+                        <Text style={[
+                          s.cardTypeText,
+                          card.type === 'debit' && s.cardTypeTextDebit
+                        ]}>
+                          {card.type === 'credit' ? 'Crédito' : 'Débito'}
+                        </Text>
+                      </View>
+                      {selectedCard?.id === card.id && (
+                        <Ionicons name="checkmark-circle" size={ms(22)} color="#42b883" />
+                      )}
                     </View>
-                    {selectedCard?.id === card.id && (
-                      <Ionicons name="checkmark-circle" size={ms(22)} color="#42b883" />
-                    )}
-                  </View>
-                </TouchableOpacity>
-              ))
+                  </TouchableOpacity>
+                );
+              })
             )}
           </View>
 
@@ -320,7 +495,7 @@ export default function DigitalPayment() {
             <Ionicons name="lock-closed" size={ms(18)} color="#0b0b0c" />
             <Text style={[s.primaryBtnText, { fontSize: ms(16) }]}>
               {selectedCard
-                ? `Pagar $${total.toFixed(2)} con ${selectedCard.brand}`
+                ? `Pagar $${totalInMXN.toFixed(2)} con ${selectedCard.brand}`
                 : 'Selecciona una tarjeta'
               }
             </Text>
@@ -340,101 +515,44 @@ export default function DigitalPayment() {
       </ScrollView>
 
       {/* Modal para agregar tarjeta */}
-      <Modal visible={showAddModal} transparent animationType="slide">
-        <View style={s.modalOverlay}>
-          <View style={[s.modalContent, { borderRadius: CARD_RADIUS }]}>
-            <View style={s.modalHeader}>
-              <Text style={s.modalTitle}>Agregar Nueva Tarjeta</Text>
-              <TouchableOpacity
-                onPress={() => setShowAddModal(false)}
-                style={s.modalCloseButton}
-              >
-                <Ionicons name="close" size={24} color="#fff" />
-              </TouchableOpacity>
-            </View>
+      <AddCardModal
+        visible={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onCardAdded={handleAddCardFromModal}
+      />
 
-            <View style={s.modalBody}>
-              {/* Número de tarjeta */}
-              <Text style={s.inputLabel}>Número de tarjeta</Text>
-              <View style={s.inputContainer}>
-                <Ionicons name="card-outline" size={20} color="#9aa0a6" />
-                <TextInput
-                  placeholder="1234 5678 9012 3456"
-                  placeholderTextColor="#555"
-                  keyboardType="numeric"
-                  style={s.input}
-                  value={newCardNumber}
-                  onChangeText={setNewCardNumber}
-                  maxLength={19}
-                />
-              </View>
+      {/* Modal de éxito personalizado */}
+      <CustomAlertModal
+        visible={showSuccessAlert}
+        onClose={() => setShowSuccessAlert(false)}
+        title={alertData.title}
+        message={alertData.message}
+        type="success"
+        buttons={[{ text: 'Continuar', onPress: () => {} }]}
+      />
 
-              {/* Marca de tarjeta */}
-              <Text style={s.inputLabel}>Marca de la tarjeta</Text>
-              <View style={s.inputContainer}>
-                <MaterialCommunityIcons name="credit-card-outline" size={20} color="#9aa0a6" />
-                <TextInput
-                  placeholder="Visa, Mastercard, BBVA..."
-                  placeholderTextColor="#555"
-                  style={s.input}
-                  value={newCardBrand}
-                  onChangeText={setNewCardBrand}
-                />
-              </View>
+      {/* Modal de error personalizado */}
+      <CustomAlertModal
+        visible={showErrorAlert}
+        onClose={() => setShowErrorAlert(false)}
+        title={alertData.title}
+        message={alertData.message}
+        type="error"
+        buttons={[{ text: 'Entendido', onPress: () => {} }]}
+      />
 
-              {/* Tipo de tarjeta */}
-              <Text style={s.inputLabel}>Tipo de tarjeta</Text>
-              <View style={s.cardTypeSelector}>
-                <TouchableOpacity
-                  style={[
-                    s.cardTypeOption,
-                    newCardType === 'credit' && s.cardTypeOptionSelected
-                  ]}
-                  onPress={() => setNewCardType('credit')}
-                >
-                  <Text style={[
-                    s.cardTypeOptionText,
-                    newCardType === 'credit' && s.cardTypeOptionTextSelected
-                  ]}>
-                    Crédito
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    s.cardTypeOption,
-                    newCardType === 'debit' && s.cardTypeOptionSelected
-                  ]}
-                  onPress={() => setNewCardType('debit')}
-                >
-                  <Text style={[
-                    s.cardTypeOptionText,
-                    newCardType === 'debit' && s.cardTypeOptionTextSelected
-                  ]}>
-                    Débito
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Botones del modal */}
-            <View style={s.modalActions}>
-              <TouchableOpacity
-                style={s.modalCancelBtn}
-                onPress={() => setShowAddModal(false)}
-              >
-                <Text style={s.modalCancelText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={s.modalSaveBtn}
-                onPress={handleAddCard}
-              >
-                <Ionicons name="checkmark" size={20} color="#0b0b0c" />
-                <Text style={s.modalSaveText}>Guardar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {/* Modal de confirmación personalizado */}
+      <CustomAlertModal
+        visible={showConfirmAlert}
+        onClose={() => setShowConfirmAlert(false)}
+        title={alertData.title}
+        message={alertData.message}
+        type="info"
+        buttons={[
+          { text: 'Cancelar', onPress: () => {} },
+          { text: 'Pagar', onPress: () => processPayment(`${selectedCard?.brand} •••• ${selectedCard?.last4}`) }
+        ]}
+      />
     </View>
   );
 }
@@ -457,6 +575,128 @@ const getPaymentIconColor = (method: string) => {
     default: return '#42b883';
   }
 };
+
+// Estilos para los alerts personalizados
+const alertStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  container: {
+    backgroundColor: '#131318',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    borderWidth: 1,
+    borderColor: '#42b883',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.3,
+        shadowRadius: 20,
+      },
+      android: {
+        elevation: 10,
+      },
+    }),
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  logo: {
+    width: 50,
+    height: 50,
+    marginBottom: 15,
+    borderRadius: 10,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  title: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  message: {
+    color: '#9aa0a6',
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  buttonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  button: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  primaryButton: {
+    backgroundColor: '#42b883',
+  },
+  dangerButton: {
+    backgroundColor: '#ff6b6b',
+  },
+  warningButton: {
+    backgroundColor: '#ffa726',
+  },
+  secondaryButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#3a3a42',
+  },
+  // Botones específicos para confirmación de pago
+  cancelButton: {
+    backgroundColor: 'red',
+    borderWidth: 1,
+    borderColor: '#green',
+  },
+  payButton: {
+    backgroundColor: '#42b883',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#42b883',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+  buttonIcon: {
+    marginRight: 4,
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  primaryButtonText: {
+    color: '#0b0b0c',
+    fontWeight: '700',
+  },
+  payButtonText: {
+    color: '#0b0b0c',
+    fontWeight: '700',
+  },
+});
 
 const s = StyleSheet.create({
   container: {
@@ -631,6 +871,15 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
+  },
+  cardInfo: {
+    flex: 1,
+  },
+  cardBrandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   cardIconContainer: {
     width: 48,
@@ -651,10 +900,19 @@ const s = StyleSheet.create({
   cardBrandSelected: {
     color: '#42b883',
   },
+  cardEmoji: {
+    fontSize: 16,
+  },
   cardNumber: {
     color: '#9aa0a6',
     fontSize: 13,
     marginTop: 2,
+  },
+  cardholderName: {
+    color: '#6c757d',
+    fontSize: 12,
+    marginTop: 2,
+    fontStyle: 'italic',
   },
   cardRowRight: {
     flexDirection: 'row',
@@ -738,127 +996,5 @@ const s = StyleSheet.create({
   footer: {
     color: '#85859a',
     textAlign: 'center',
-  },
-
-  // Modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: '#131318',
-    borderWidth: 1,
-    borderColor: '#42b883',
-    overflow: 'hidden',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#202028',
-  },
-  modalTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  modalCloseButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalBody: {
-    padding: 20,
-  },
-  inputLabel: {
-    color: '#9aa0a6',
-    fontSize: 13,
-    fontWeight: '500',
-    marginBottom: 8,
-    marginTop: 12,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1a1a1f',
-    borderWidth: 1,
-    borderColor: '#202028',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    gap: 10,
-  },
-  input: {
-    flex: 1,
-    color: '#fff',
-    fontSize: 16,
-    paddingVertical: 14,
-  },
-  cardTypeSelector: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 4,
-  },
-  cardTypeOption: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: '#1a1a1f',
-    borderWidth: 1,
-    borderColor: '#202028',
-    alignItems: 'center',
-  },
-  cardTypeOptionSelected: {
-    backgroundColor: 'rgba(66, 184, 131, 0.15)',
-    borderColor: '#42b883',
-  },
-  cardTypeOptionText: {
-    color: '#9aa0a6',
-    fontWeight: '600',
-  },
-  cardTypeOptionTextSelected: {
-    color: '#42b883',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    padding: 16,
-    gap: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#202028',
-  },
-  modalCancelBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#3a3a42',
-    alignItems: 'center',
-  },
-  modalCancelText: {
-    color: '#ff6b6b',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  modalSaveBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: '#42b883',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  modalSaveText: {
-    color: '#0b0b0c',
-    fontWeight: '700',
-    fontSize: 16,
   },
 });

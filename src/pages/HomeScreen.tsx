@@ -1,21 +1,27 @@
 // HomeScreen.tsx
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useCallback, useState } from 'react';
 import {
   Image,
+  Modal,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   useWindowDimensions,
   View
 } from 'react-native';
+import { RootStackParamList } from '../navegation/types/navigation';
 
 const BASE_W = 375;
 const BASE_H = 812;
 
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   // Escalas responsivas
   const hs = (size: number) => (width / BASE_W) * size;
@@ -35,6 +41,26 @@ export default function HomeScreen() {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 800);
   }, []);
+
+  // Modal de cierre de sesión
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  const handleLogoutPress = () => {
+    setShowLogoutModal(true);
+  };
+
+  const handleConfirmLogout = () => {
+    setShowLogoutModal(false);
+    // Navegar al LoginScreen y resetear el stack
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Login' }],
+    });
+  };
+
+  const handleCancelLogout = () => {
+    setShowLogoutModal(false);
+  };
 
   return (
     <View style={s.container}>
@@ -148,12 +174,94 @@ export default function HomeScreen() {
             />
           </View>
 
+          {/* Botón de Cerrar Sesión */}
+          <TouchableOpacity
+            style={[s.logoutButton, { 
+              borderRadius: CARD_RADIUS, 
+              paddingVertical: vs(14),
+              paddingHorizontal: hs(24),
+              marginBottom: vs(16),
+            }]}
+            onPress={handleLogoutPress}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="log-out-outline" size={ms(20)} color="#ff6b6b" />
+            <Text style={[s.logoutButtonText, { fontSize: ms(15) }]}>Cerrar Sesión</Text>
+          </TouchableOpacity>
+
           {/* Footer */}
           <Text style={[s.footer, { fontSize: ms(12), marginBottom: vs(24) }]}>
             © {new Date().getFullYear()} Ocelon — All rights reserved.
           </Text>
         </View>
       </ScrollView>
+
+      {/* Modal de Agradecimiento */}
+      <Modal
+        visible={showLogoutModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={handleCancelLogout}
+      >
+        <View style={s.modalOverlay}>
+          <View style={[s.modalContent, { maxWidth: width * 0.85, borderRadius: hs(16) }]}>
+            {/* Logo de Ocelon */}
+            <View style={[s.modalLogoContainer, { 
+              width: hs(100), 
+              height: hs(100), 
+              borderRadius: hs(50) 
+            }]}>
+              <Image
+                source={require('../../assets/images/Logo_ocelon.jpg')}
+                style={[s.modalLogo, { 
+                  width: hs(80), 
+                  height: hs(80), 
+                  borderRadius: hs(16) 
+                }]}
+                resizeMode="cover"
+              />
+            </View>
+
+            {/* Título */}
+            <Text style={[s.modalTitle, { fontSize: ms(22) }]}>
+              ¡Gracias por usar Ocelon!
+            </Text>
+
+            {/* Subtítulo */}
+            <Text style={[s.modalSubtitle, { fontSize: ms(14) }]}>
+              Esperamos verte pronto de nuevo. ¡Buen viaje!
+            </Text>
+
+            {/* Botones */}
+            <View style={s.modalButtons}>
+              <TouchableOpacity
+                style={[s.cancelButton, { 
+                  borderRadius: hs(12), 
+                  paddingVertical: vs(14),
+                  flex: 1,
+                }]}
+                onPress={handleCancelLogout}
+                activeOpacity={0.8}
+              >
+                <Text style={[s.cancelButtonText, { fontSize: ms(15) }]}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[s.confirmButton, { 
+                  borderRadius: hs(12), 
+                  paddingVertical: vs(14),
+                  flex: 1,
+                }]}
+                onPress={handleConfirmLogout}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="log-out-outline" size={ms(18)} color="#0b0b0c" />
+                <Text style={[s.confirmButtonText, { fontSize: ms(15) }]}>Salir</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -222,4 +330,86 @@ const s = StyleSheet.create({
   title: { color: '#ffffff', fontWeight: '800' },
   subtitle: { color: '#c9c9cf' },
   footer: { color: '#85859a' },
+
+  // Logout Button
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 107, 0.3)',
+  },
+  logoutButtonText: {
+    color: '#ff6b6b',
+    fontWeight: '700',
+  },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#131318',
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#42b883',
+    width: '100%',
+  },
+  modalLogoContainer: {
+    backgroundColor: 'rgba(66, 184, 131, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: '#42b883',
+  },
+  modalLogo: {
+    borderWidth: 0,
+  },
+  modalTitle: {
+    color: '#fff',
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    color: '#9aa0a6',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  cancelButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#3a3a42',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButtonText: {
+    color: '#9aa0a6',
+    fontWeight: '600',
+  },
+  confirmButton: {
+    backgroundColor: '#42b883',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  confirmButtonText: {
+    color: '#0b0b0c',
+    fontWeight: '800',
+  },
 });

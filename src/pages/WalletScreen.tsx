@@ -41,7 +41,7 @@ type QrPayload = {
 // Constantes
 // ═══════════════════════════════════════════════════════════════
 
-const SERVER_URL = 'http://192.168.100.28:3001'; //CAMBIAR DIRECCION IP
+const SERVER_URL = 'http://192.168.100.29:3001'; //CAMBIAR DIRECCION IP
 const FINISH_SCHEME = 'ocelon://pay/finish';
 const FINISH_PATH = '/op/finish';
 
