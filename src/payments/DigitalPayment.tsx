@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AddCardModal from '../components/AddCardModal';
+import { useConfig } from '../contexts/ConfigContext';
 import { useAuthState } from "../hooks/useAuthState";
 import { RootStackParamList } from "../navegation/types/navigation";
 import { getTimer, onTimerChange, stopTimer } from "../utils/TimerStore";
@@ -48,6 +49,8 @@ const CustomAlertModal = ({
   type?: 'success' | 'error' | 'warning' | 'info';
   buttons?: { text: string; onPress: () => void }[];
 }) => {
+  const { t, isDark } = useConfig();
+
   const getIcon = () => {
     switch (type) {
       case 'success': return 'checkmark-circle';
@@ -66,12 +69,21 @@ const CustomAlertModal = ({
     }
   };
 
+  // Colores dinámicos
+  const colors = {
+    background: isDark ? '#131318' : '#ffffff',
+    text: isDark ? '#ffffff' : '#000000',
+    textSecondary: isDark ? '#9aa0a6' : '#666666',
+    border: isDark ? '#42b883' : '#42b883',
+    secondaryBorder: isDark ? '#3a3a42' : '#e0e0e0',
+  };
+
   // Función para determinar el estilo del botón basado en su texto
   const getButtonStyle = (buttonText: string, index: number) => {
     // Para modales de confirmación (tipo 'info')
     if (type === 'info') {
       if (buttonText.toLowerCase().includes('cancelar') || buttonText.toLowerCase().includes('cancel')) {
-        return alertStyles.cancelButton;
+        return [alertStyles.cancelButton, { backgroundColor: isDark ? '#2a2a2a' : '#f8f9fa', borderColor: isDark ? '#ff6b6b' : '#ff6b6b' }];
       }
       if (buttonText.toLowerCase().includes('pagar') || buttonText.toLowerCase().includes('pay') || buttonText.toLowerCase().includes('confirm')) {
         return alertStyles.payButton;
@@ -87,7 +99,7 @@ const CustomAlertModal = ({
         default: return alertStyles.primaryButton;
       }
     } else {
-      return alertStyles.secondaryButton;
+      return [alertStyles.secondaryButton, { backgroundColor: 'transparent', borderColor: colors.secondaryBorder }];
     }
   };
 
@@ -96,19 +108,22 @@ const CustomAlertModal = ({
       if (buttonText.toLowerCase().includes('pagar') || buttonText.toLowerCase().includes('pay') || buttonText.toLowerCase().includes('confirm')) {
         return alertStyles.payButtonText;
       }
+      if (buttonText.toLowerCase().includes('cancelar') || buttonText.toLowerCase().includes('cancel')) {
+        return [alertStyles.buttonText, { color: '#ff6b6b' }];
+      }
     }
     
     if (index === 0 && (type === 'success' || type === 'info')) {
       return alertStyles.primaryButtonText;
     }
     
-    return alertStyles.buttonText;
+    return [alertStyles.buttonText, { color: colors.text }];
   };
 
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={alertStyles.overlay}>
-        <View style={alertStyles.container}>
+        <View style={[alertStyles.container, { backgroundColor: colors.background, borderColor: colors.border }]}>
           {/* Header con Logo */}
           <View style={alertStyles.header}>
             <Image
@@ -118,12 +133,12 @@ const CustomAlertModal = ({
             />
             <View style={alertStyles.titleContainer}>
               <Ionicons name={getIcon()} size={28} color={getIconColor()} />
-              <Text style={alertStyles.title}>{title}</Text>
+              <Text style={[alertStyles.title, { color: colors.text }]}>{title}</Text>
             </View>
           </View>
 
           {/* Mensaje */}
-          <Text style={alertStyles.message}>{message}</Text>
+          <Text style={[alertStyles.message, { color: colors.textSecondary }]}>{message}</Text>
 
           {/* Botones */}
           <View style={alertStyles.buttonsContainer}>
@@ -164,6 +179,8 @@ export default function DigitalPayment() {
   const navigation = useNavigation<any>();
   const { usuario } = useAuthState();
   const insets = useSafeAreaInsets();
+  const { t, isDark } = useConfig();
+  
   const initialMonto = route.params?.monto ?? 0;
   const rawQrData = route.params?.rawQrData ?? '';
 
@@ -183,6 +200,23 @@ export default function DigitalPayment() {
   const [showErrorAlert, setShowErrorAlert] = useState(false);
   const [showConfirmAlert, setShowConfirmAlert] = useState(false);
   const [alertData, setAlertData] = useState({ title: '', message: '' });
+
+  // Colores dinámicos
+  const colors = {
+    background: isDark ? '#0b0b0c' : '#f8f9fa',
+    cardBackground: isDark ? '#131318' : '#ffffff',
+    text: isDark ? '#ffffff' : '#000000',
+    textSecondary: isDark ? '#9aa0a6' : '#666666',
+    border: isDark ? '#202028' : '#e0e0e0',
+    primary: '#42b883',
+    success: '#42b883',
+    error: '#ff4444',
+    overlay: isDark ? 'rgba(0,0,0,0.9)' : 'rgba(0,0,0,0.7)',
+    backButtonBg: isDark ? 'rgba(66, 184, 131, 0.15)' : 'rgba(66, 184, 131, 0.1)',
+    backButtonBorder: isDark ? 'rgba(66, 184, 131, 0.3)' : 'rgba(66, 184, 131, 0.2)',
+    amountCardBg: isDark ? '#131318' : '#ffffff',
+    amountCardBorder: isDark ? '#202028' : '#e0e0e0',
+  };
 
   // Convertir USD a MXN
   const totalInMXN = total * USD_TO_MXN;
@@ -223,8 +257,8 @@ export default function DigitalPayment() {
     
     // Mostrar alerta personalizada de éxito
     setAlertData({
-      title: "¡Tarjeta Agregada!",
-      message: `Tu tarjeta ${newCard.brand} •••• ${newCard.last4} ha sido agregada exitosamente.`
+      title: t('cardAddedSuccess'),
+      message: t('cardAddedMessage', { brand: newCard.brand, last4: newCard.last4 })
     });
     setShowSuccessAlert(true);
   };
@@ -237,8 +271,8 @@ export default function DigitalPayment() {
   const handlePayment = (method: string) => {
     if (!usuario) {
       setAlertData({
-        title: "Error",
-        message: "Debe iniciar sesión para realizar un pago digital"
+        title: t('error'),
+        message: t('loginRequired')
       });
       setShowErrorAlert(true);
       return;
@@ -248,8 +282,8 @@ export default function DigitalPayment() {
     if (method === "card") {
       if (!selectedCard) {
         setAlertData({
-          title: "Error",
-          message: "Seleccione una tarjeta para continuar con el pago"
+          title: t('error'),
+          message: t('selectCardRequired')
         });
         setShowErrorAlert(true);
         return;
@@ -258,8 +292,12 @@ export default function DigitalPayment() {
       
       // Mostrar confirmación de pago personalizada
       setAlertData({
-        title: "Confirmar Pago",
-        message: `¿Estás seguro de pagar $${totalInMXN.toFixed(2)} con tu tarjeta ${selectedCard.brand} •••• ${selectedCard.last4}?`
+        title: t('confirmPayment'),
+        message: t('confirmPaymentMessage', { 
+          amount: totalInMXN.toFixed(2), 
+          brand: selectedCard.brand, 
+          last4: selectedCard.last4 
+        })
       });
       setShowConfirmAlert(true);
     } else {
@@ -303,13 +341,14 @@ export default function DigitalPayment() {
   const MAX_W = 600;
 
   return (
-    <View style={s.container}>
+    <View style={[s.container, { backgroundColor: colors.background }]}>
       {/* Logo de fondo transparente */}
       <Image
         source={require('../../assets/images/Logo_ocelon.jpg')}
         style={[s.backgroundLogo, {
           width: width * 0.8,
           height: width * 0.8,
+          opacity: isDark ? 0.05 : 0.03,
         }]}
         resizeMode="contain"
       />
@@ -330,45 +369,62 @@ export default function DigitalPayment() {
           {/* Header con botón de regreso */}
           <View style={[s.header, { marginBottom: vs(24), paddingVertical: vs(8) }]}>
             <TouchableOpacity
-              style={s.backButton}
+              style={[s.backButton, { 
+                backgroundColor: colors.backButtonBg,
+                borderColor: colors.backButtonBorder 
+              }]}
               onPress={handleGoBack}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Ionicons name="arrow-back" size={26} color="#42b883" />
+              <Ionicons name="arrow-back" size={26} color={colors.primary} />
             </TouchableOpacity>
-            <Text style={[s.headerTitle, { fontSize: ms(18) }]}>
-              Pago Digital
+            <Text style={[s.headerTitle, { fontSize: ms(18), color: colors.text }]}>
+              {t('digitalPayment')}
             </Text>
             <View style={s.headerPlaceholder} />
           </View>
 
           {/* Card del monto total */}
-          <View style={[s.amountCard, { borderRadius: CARD_RADIUS, padding: hs(20) }]}>
+          <View style={[s.amountCard, { 
+            borderRadius: CARD_RADIUS, 
+            padding: hs(20),
+            backgroundColor: colors.amountCardBg,
+            borderColor: colors.amountCardBorder
+          }]}>
             <View style={s.amountHeader}>
               <View style={s.amountIconContainer}>
-                <Ionicons name="card" size={ms(24)} color="#42b883" />
+                <Ionicons name="card" size={ms(24)} color={colors.primary} />
               </View>
-              <Text style={s.amountLabel}>Total a Pagar</Text>
+              <Text style={[s.amountLabel, { color: colors.textSecondary }]}>
+                {t('totalToPay')}
+              </Text>
             </View>
-            <Text style={[s.amountValue, { fontSize: ms(42) }]}>
+            <Text style={[s.amountValue, { fontSize: ms(42), color: colors.primary }]}>
               ${totalInMXN.toFixed(2)}
             </Text>
-            <Text style={s.amountCurrency}>MXN</Text>
+            <Text style={[s.amountCurrency, { color: colors.primary }]}>MXN</Text>
           </View>
 
           {/* Sección de pago rápido */}
           <View style={[s.sectionHeader, { marginTop: vs(24) }]}>
-            <Ionicons name="flash" size={ms(18)} color="#42b883" />
-            <Text style={[s.sectionTitle, { fontSize: ms(16) }]}>Pago Rápido</Text>
+            <Ionicons name="flash" size={ms(18)} color={colors.primary} />
+            <Text style={[s.sectionTitle, { fontSize: ms(16), color: colors.text }]}>
+              {t('quickPayment')}
+            </Text>
           </View>
 
-          <View style={[s.card, { borderRadius: CARD_RADIUS, padding: hs(8) }]}>
+          <View style={[s.card, { 
+            borderRadius: CARD_RADIUS, 
+            padding: hs(8),
+            backgroundColor: colors.cardBackground,
+            borderColor: colors.border
+          }]}>
             {["Apple Pay", "PayPal", "Google Pay"].map((method, index) => (
               <TouchableOpacity
                 key={method}
                 style={[
                   s.paymentRow,
-                  index !== 2 && s.paymentRowBorder
+                  index !== 2 && [s.paymentRowBorder, { borderBottomColor: colors.border }]
                 ]}
                 onPress={() => handlePayment(method)}
                 activeOpacity={0.7}
@@ -381,9 +437,9 @@ export default function DigitalPayment() {
                       color={getPaymentIconColor(method)}
                     />
                   </View>
-                  <Text style={s.paymentOption}>{method}</Text>
+                  <Text style={[s.paymentOption, { color: colors.text }]}>{method}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={ms(20)} color="#42b883" />
+                <Ionicons name="chevron-forward" size={ms(20)} color={colors.primary} />
               </TouchableOpacity>
             ))}
           </View>
@@ -391,28 +447,42 @@ export default function DigitalPayment() {
           {/* Sección de tarjetas */}
           <View style={[s.sectionHeader, { marginTop: vs(24) }]}>
             <View style={s.sectionHeaderLeft}>
-              <Ionicons name="wallet" size={ms(18)} color="#42b883" />
-              <Text style={[s.sectionTitle, { fontSize: ms(16) }]}>Mis Tarjetas</Text>
+              <Ionicons name="wallet" size={ms(18)} color={colors.primary} />
+              <Text style={[s.sectionTitle, { fontSize: ms(16), color: colors.text }]}>
+                {t('myCards')}
+              </Text>
             </View>
             <TouchableOpacity
               style={s.addButton}
               onPress={() => setShowAddModal(true)}
             >
-              <Ionicons name="add-circle" size={ms(20)} color="#42b883" />
-              <Text style={s.addButtonText}>Agregar</Text>
+              <Ionicons name="add-circle" size={ms(20)} color={colors.primary} />
+              <Text style={[s.addButtonText, { color: colors.primary }]}>{t('add')}</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={[s.card, { borderRadius: CARD_RADIUS, padding: hs(8) }]}>
+          <View style={[s.card, { 
+            borderRadius: CARD_RADIUS, 
+            padding: hs(8),
+            backgroundColor: colors.cardBackground,
+            borderColor: colors.border
+          }]}>
             {cards.length === 0 ? (
               <View style={s.emptyCards}>
-                <Ionicons name="card-outline" size={ms(40)} color="#3a3a42" />
-                <Text style={s.emptyCardsText}>No tienes tarjetas guardadas</Text>
+                <Ionicons name="card-outline" size={ms(40)} color={colors.textSecondary} />
+                <Text style={[s.emptyCardsText, { color: colors.textSecondary }]}>
+                  {t('noCardsSaved')}
+                </Text>
                 <TouchableOpacity
-                  style={s.emptyCardsButton}
+                  style={[s.emptyCardsButton, { 
+                    backgroundColor: colors.backButtonBg,
+                    borderColor: colors.backButtonBorder
+                  }]}
                   onPress={() => setShowAddModal(true)}
                 >
-                  <Text style={s.emptyCardsButtonText}>Agregar tarjeta</Text>
+                  <Text style={[s.emptyCardsButtonText, { color: colors.primary }]}>
+                    {t('addCard')}
+                  </Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -423,8 +493,8 @@ export default function DigitalPayment() {
                     key={card.id}
                     style={[
                       s.cardRow,
-                      index !== cards.length - 1 && s.cardRowBorder,
-                      selectedCard?.id === card.id && s.cardRowSelected
+                      index !== cards.length - 1 && [s.cardRowBorder, { borderBottomColor: colors.border }],
+                      selectedCard?.id === card.id && [s.cardRowSelected, { backgroundColor: isDark ? 'rgba(66, 184, 131, 0.1)' : 'rgba(66, 184, 131, 0.05)' }]
                     ]}
                     onPress={() => setSelectedCard(card)}
                     activeOpacity={0.7}
@@ -432,44 +502,52 @@ export default function DigitalPayment() {
                     <View style={s.cardRowLeft}>
                       <View style={[
                         s.cardIconContainer,
-                        selectedCard?.id === card.id && s.cardIconSelected
+                        { backgroundColor: isDark ? '#1a1a1f' : '#f8f9fa' },
+                        selectedCard?.id === card.id && [s.cardIconSelected, { backgroundColor: isDark ? 'rgba(66, 184, 131, 0.2)' : 'rgba(66, 184, 131, 0.15)' }]
                       ]}>
                         <MaterialCommunityIcons
                           name={cardIcon.icon as any}
                           size={ms(24)}
-                          color={selectedCard?.id === card.id ? "#42b883" : cardIcon.color}
+                          color={selectedCard?.id === card.id ? colors.primary : cardIcon.color}
                         />
                       </View>
                       <View style={s.cardInfo}>
                         <View style={s.cardBrandRow}>
                           <Text style={[
                             s.cardBrand,
-                            selectedCard?.id === card.id && s.cardBrandSelected
+                            { color: colors.text },
+                            selectedCard?.id === card.id && [s.cardBrandSelected, { color: colors.primary }]
                           ]}>
                             {card.brand}
                           </Text>
                           <Text style={s.cardEmoji}>{cardIcon.emoji}</Text>
                         </View>
-                        <Text style={s.cardNumber}>•••• •••• •••• {card.last4}</Text>
+                        <Text style={[s.cardNumber, { color: colors.textSecondary }]}>
+                          •••• •••• •••• {card.last4}
+                        </Text>
                         {card.cardholderName && (
-                          <Text style={s.cardholderName}>{card.cardholderName}</Text>
+                          <Text style={[s.cardholderName, { color: colors.textSecondary }]}>
+                            {card.cardholderName}
+                          </Text>
                         )}
                       </View>
                     </View>
                     <View style={s.cardRowRight}>
                       <View style={[
                         s.cardTypeBadge,
-                        card.type === 'debit' && s.cardTypeBadgeDebit
+                        { backgroundColor: isDark ? 'rgba(66, 184, 131, 0.15)' : 'rgba(66, 184, 131, 0.1)' },
+                        card.type === 'debit' && [s.cardTypeBadgeDebit, { backgroundColor: isDark ? 'rgba(108, 99, 255, 0.15)' : 'rgba(108, 99, 255, 0.1)' }]
                       ]}>
                         <Text style={[
                           s.cardTypeText,
-                          card.type === 'debit' && s.cardTypeTextDebit
+                          { color: colors.primary },
+                          card.type === 'debit' && [s.cardTypeTextDebit, { color: '#6C63FF' }]
                         ]}>
-                          {card.type === 'credit' ? 'Crédito' : 'Débito'}
+                          {card.type === 'credit' ? t('credit') : t('debit')}
                         </Text>
                       </View>
                       {selectedCard?.id === card.id && (
-                        <Ionicons name="checkmark-circle" size={ms(22)} color="#42b883" />
+                        <Ionicons name="checkmark-circle" size={ms(22)} color={colors.primary} />
                       )}
                     </View>
                   </TouchableOpacity>
@@ -486,7 +564,8 @@ export default function DigitalPayment() {
                 borderRadius: CARD_RADIUS,
                 paddingVertical: vs(16),
                 marginTop: vs(28),
-                opacity: !selectedCard ? 0.6 : 1
+                opacity: !selectedCard ? 0.6 : 1,
+                backgroundColor: colors.primary
               }
             ]}
             onPress={() => handlePayment("card")}
@@ -495,21 +574,23 @@ export default function DigitalPayment() {
             <Ionicons name="lock-closed" size={ms(18)} color="#0b0b0c" />
             <Text style={[s.primaryBtnText, { fontSize: ms(16) }]}>
               {selectedCard
-                ? `Pagar $${totalInMXN.toFixed(2)} con ${selectedCard.brand}`
-                : 'Selecciona una tarjeta'
+                ? t('payWithCard', { amount: totalInMXN.toFixed(2), brand: selectedCard.brand })
+                : t('selectCard')
               }
             </Text>
           </TouchableOpacity>
 
           {/* Indicador de seguridad */}
           <View style={s.securityBadge}>
-            <Ionicons name="shield-checkmark" size={ms(14)} color="#42b883" />
-            <Text style={s.securityText}>Pago seguro con encriptación SSL</Text>
+            <Ionicons name="shield-checkmark" size={ms(14)} color={colors.primary} />
+            <Text style={[s.securityText, { color: colors.textSecondary }]}>
+              {t('securePayment')}
+            </Text>
           </View>
 
           {/* Footer */}
-          <Text style={[s.footer, { fontSize: ms(11), marginTop: vs(24) }]}>
-            © {new Date().getFullYear()} Ocelon — Estacionamiento Inteligente
+          <Text style={[s.footer, { fontSize: ms(11), marginTop: vs(24), color: colors.textSecondary }]}>
+            © {new Date().getFullYear()} Ocelon — {t('smartParking')}
           </Text>
         </View>
       </ScrollView>
@@ -528,7 +609,7 @@ export default function DigitalPayment() {
         title={alertData.title}
         message={alertData.message}
         type="success"
-        buttons={[{ text: 'Continuar', onPress: () => {} }]}
+        buttons={[{ text: t('continue'), onPress: () => {} }]}
       />
 
       {/* Modal de error personalizado */}
@@ -538,7 +619,7 @@ export default function DigitalPayment() {
         title={alertData.title}
         message={alertData.message}
         type="error"
-        buttons={[{ text: 'Entendido', onPress: () => {} }]}
+        buttons={[{ text: t('understood'), onPress: () => {} }]}
       />
 
       {/* Modal de confirmación personalizado */}
@@ -549,8 +630,8 @@ export default function DigitalPayment() {
         message={alertData.message}
         type="info"
         buttons={[
-          { text: 'Cancelar', onPress: () => {} },
-          { text: 'Pagar', onPress: () => processPayment(`${selectedCard?.brand} •••• ${selectedCard?.last4}`) }
+          { text: t('cancel'), onPress: () => {} },
+          { text: t('pay'), onPress: () => processPayment(`${selectedCard?.brand} •••• ${selectedCard?.last4}`) }
         ]}
       />
     </View>
@@ -586,13 +667,11 @@ const alertStyles = StyleSheet.create({
     padding: 20,
   },
   container: {
-    backgroundColor: '#131318',
     borderRadius: 20,
     padding: 24,
     width: '100%',
     maxWidth: 400,
     borderWidth: 1,
-    borderColor: '#42b883',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -621,13 +700,11 @@ const alertStyles = StyleSheet.create({
     gap: 10,
   },
   title: {
-    color: '#fff',
     fontSize: 20,
     fontWeight: '700',
     textAlign: 'center',
   },
   message: {
-    color: '#9aa0a6',
     fontSize: 16,
     textAlign: 'center',
     lineHeight: 22,
@@ -656,15 +733,11 @@ const alertStyles = StyleSheet.create({
     backgroundColor: '#ffa726',
   },
   secondaryButton: {
-    backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#3a3a42',
   },
   // Botones específicos para confirmación de pago
   cancelButton: {
-    backgroundColor: 'red',
     borderWidth: 1,
-    borderColor: '#green',
   },
   payButton: {
     backgroundColor: '#42b883',
@@ -684,7 +757,6 @@ const alertStyles = StyleSheet.create({
     marginRight: 4,
   },
   buttonText: {
-    color: '#fff',
     fontWeight: '600',
     fontSize: 16,
   },
@@ -701,7 +773,6 @@ const alertStyles = StyleSheet.create({
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0b0b0c',
   },
   backgroundLogo: {
     position: 'absolute',
@@ -711,7 +782,6 @@ const s = StyleSheet.create({
       { translateX: -150 },
       { translateY: -150 }
     ],
-    opacity: 0.05,
     zIndex: 0,
   },
   header: {
@@ -725,14 +795,11 @@ const s = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: 'rgba(66, 184, 131, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(66, 184, 131, 0.3)',
   },
   headerTitle: {
-    color: '#fff',
     fontWeight: '700',
     textAlign: 'center',
     flex: 1,
@@ -744,10 +811,8 @@ const s = StyleSheet.create({
   // Amount Card
   amountCard: {
     width: '100%',
-    backgroundColor: '#131318',
-    borderWidth: 1,
-    borderColor: '#202028',
     alignItems: 'center',
+    borderWidth: 1,
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 10, shadowOffset: { width: 0, height: 5 } },
       android: { elevation: 5 },
@@ -768,16 +833,13 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   amountLabel: {
-    color: '#9f9faf',
     fontSize: 14,
     fontWeight: '500',
   },
   amountValue: {
-    color: '#42b883',
     fontWeight: '900',
   },
   amountCurrency: {
-    color: '#42b883',
     fontSize: 14,
     fontWeight: '600',
     marginTop: 4,
@@ -796,7 +858,6 @@ const s = StyleSheet.create({
     gap: 8,
   },
   sectionTitle: {
-    color: '#fff',
     fontWeight: '700',
     marginLeft: 8,
   },
@@ -806,7 +867,6 @@ const s = StyleSheet.create({
     gap: 4,
   },
   addButtonText: {
-    color: '#42b883',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -814,9 +874,7 @@ const s = StyleSheet.create({
   // Cards
   card: {
     width: '100%',
-    backgroundColor: '#151518',
     borderWidth: 1,
-    borderColor: '#202028',
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
       android: { elevation: 3 },
@@ -832,7 +890,6 @@ const s = StyleSheet.create({
   },
   paymentRowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: '#202028',
   },
   paymentRowLeft: {
     flexDirection: 'row',
@@ -847,7 +904,6 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   paymentOption: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -861,10 +917,8 @@ const s = StyleSheet.create({
   },
   cardRowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: '#202028',
   },
   cardRowSelected: {
-    backgroundColor: 'rgba(66, 184, 131, 0.1)',
     borderRadius: 12,
   },
   cardRowLeft: {
@@ -885,31 +939,27 @@ const s = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#1a1a1f',
     alignItems: 'center',
     justifyContent: 'center',
   },
   cardIconSelected: {
-    backgroundColor: 'rgba(66, 184, 131, 0.2)',
+    // Estilos se aplican dinámicamente
   },
   cardBrand: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
   cardBrandSelected: {
-    color: '#42b883',
+    // Estilos se aplican dinámicamente
   },
   cardEmoji: {
     fontSize: 16,
   },
   cardNumber: {
-    color: '#9aa0a6',
     fontSize: 13,
     marginTop: 2,
   },
   cardholderName: {
-    color: '#6c757d',
     fontSize: 12,
     marginTop: 2,
     fontStyle: 'italic',
@@ -923,18 +973,16 @@ const s = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
-    backgroundColor: 'rgba(66, 184, 131, 0.15)',
   },
   cardTypeBadgeDebit: {
-    backgroundColor: 'rgba(108, 99, 255, 0.15)',
+    // Estilos se aplican dinámicamente
   },
   cardTypeText: {
-    color: '#42b883',
     fontSize: 11,
     fontWeight: '600',
   },
   cardTypeTextDebit: {
-    color: '#6C63FF',
+    // Estilos se aplican dinámicamente
   },
 
   // Empty Cards
@@ -943,7 +991,6 @@ const s = StyleSheet.create({
     padding: 30,
   },
   emptyCardsText: {
-    color: '#9aa0a6',
     fontSize: 14,
     marginTop: 12,
   },
@@ -951,20 +998,16 @@ const s = StyleSheet.create({
     marginTop: 16,
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: 'rgba(66, 184, 131, 0.15)',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(66, 184, 131, 0.3)',
   },
   emptyCardsButtonText: {
-    color: '#42b883',
     fontWeight: '600',
   },
 
   // Primary Button
   primaryBtn: {
     width: '100%',
-    backgroundColor: '#42b883',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -988,13 +1031,11 @@ const s = StyleSheet.create({
     marginTop: 16,
   },
   securityText: {
-    color: '#9aa0a6',
     fontSize: 12,
   },
 
   // Footer
   footer: {
-    color: '#85859a',
     textAlign: 'center',
   },
 });

@@ -1,4 +1,4 @@
-// screens/WalletScreen.tsx - VERSIÓN COMPLETA CORREGIDA
+// screens/WalletScreen.tsx - VERSIÓN COMPLETA CON TEMA E IDIOMA
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -19,6 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import CustomSuccessModal from '../components/CustomSuccessModal';
 import { opApi } from '../services/opApi';
+import { useConfig } from '../contexts/ConfigContext'; // Importa el hook
 
 // ═══════════════════════════════════════════════════════════════
 // Tipos
@@ -41,7 +42,7 @@ type QrPayload = {
 // Constantes
 // ═══════════════════════════════════════════════════════════════
 
-const SERVER_URL = 'http://192.168.100.29:3001'; //CAMBIAR DIRECCION IP
+const SERVER_URL = 'http://192.168.100.77:3001'; //CAMBIAR DIRECCION IP
 const FINISH_SCHEME = 'ocelon://pay/finish';
 const FINISH_PATH = '/op/finish';
 
@@ -114,6 +115,7 @@ function DetailRow({
   vs,
   ms,
   valueColor,
+  colors,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -122,16 +124,17 @@ function DetailRow({
   vs: (n: number) => number;
   ms: (n: number, f?: number) => number;
   valueColor?: string;
+  colors: any;
 }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: hs(10), paddingVertical: vs(6) }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: hs(8), flexShrink: 0 }}>
         {icon}
-        <Text style={{ color: '#a0a0a0', fontSize: hs(12) }}>{label}</Text>
+        <Text style={{ color: colors.textSecondary, fontSize: hs(12) }}>{label}</Text>
       </View>
       <Text
         style={{
-          color: valueColor || '#fff',
+          color: valueColor || colors.text,
           fontWeight: '600',
           marginLeft: 'auto',
           maxWidth: '60%',
@@ -157,6 +160,7 @@ export default function WalletScreen() {
   const webRef = useRef<WebView>(null);
   const continuedRef = useRef(false);
   const finishingRef = useRef(false);
+  const { t, isDark } = useConfig(); // Usa el hook de configuración
 
   // ====== Escalas responsivas ======
   const { width, height } = useWindowDimensions();
@@ -192,6 +196,21 @@ export default function WalletScreen() {
   const ICON = ms(18);
   const MAX_W = Math.min(560, width - hs(32));
 
+  // ====== Colores dinámicos según el tema ======
+  const colors = {
+    background: isDark ? '#0b0b0c' : '#f8f9fa',
+    card: isDark ? '#151518' : '#ffffff',
+    text: isDark ? '#ffffff' : '#000000',
+    textSecondary: isDark ? '#a0a0a0' : '#666666',
+    border: isDark ? '#202028' : '#e0e0e0',
+    primary: '#42b883',
+    secondary: isDark ? '#1b1b20' : '#f1f3f4',
+    tertiary: isDark ? '#1a1a2e' : '#e8eaf6',
+    tertiaryText: isDark ? '#6C63FF' : '#3f51b5',
+    error: isDark ? '#ff6b6b' : '#d32f2f',
+    success: isDark ? '#42b883' : '#2e7d32',
+  };
+
   // ====== Resumen del pago ======
   const summary = useMemo(() => {
     const amountUSD = Number(qr.amount ?? qr.finalCost ?? '0');
@@ -202,7 +221,7 @@ export default function WalletScreen() {
       amountUSD,              // Lo que paga el usuario en USD
       amountMXN,              // Lo que recibe ocelon1 en MXN
       spot: qr.spot ?? '—',
-      parking: qr.parking ?? 'Estacionamiento',
+      parking: qr.parking ?? t('parking'),
       nonce: qr.nonce ?? '—',
       timestamp: qr.ts ?? '—',
       elapsedTime: elapsedTime,
@@ -210,7 +229,7 @@ export default function WalletScreen() {
       raw: qr.raw,
       scheme: (qr.scheme ?? 'openpayment').toUpperCase(),
     };
-  }, [qr]);
+  }, [qr, t]);
 
   // ====== Cargar info del servidor ======
   useEffect(() => {
@@ -230,12 +249,12 @@ export default function WalletScreen() {
       } catch (e: any) {
         console.error('❌ No se pudo leer /op/wallets:', e?.message);
         Alert.alert(
-          'Error de Conexión',
-          `No se pudo conectar al servidor: ${e?.message}\n\nAsegúrate de que el servidor esté ejecutándose en ${SERVER_URL}`
+          t('connectionError'),
+          `${t('serverConnectionError')}: ${e?.message}\n\n${t('ensureServerRunning')} ${SERVER_URL}`
         );
       }
     })();
-  }, []);
+  }, [t]);
 
   // ====== Función para redirigir a ExitScreen ======
   const redirectToExitScreen = useCallback(() => {
@@ -265,7 +284,7 @@ export default function WalletScreen() {
 
       // Validar que tenemos todos los datos necesarios
       if (!flow.incomingId || !flow.continueUri || !flow.continueAccessToken) {
-        throw new Error('Faltan datos necesarios para finalizar el pago');
+        throw new Error(t('missingPaymentData'));
       }
 
       // 1. Finalizar el grant y obtener access token
@@ -304,13 +323,13 @@ export default function WalletScreen() {
       console.error('❌ [finishOutgoing error]', e);
       setFlow(prev => ({ ...prev, status: 'failed' }));
       Alert.alert(
-        'Error en Pago',
-        e?.message || 'No se pudo completar el pago. Por favor intenta nuevamente.'
+        t('paymentError'),
+        e?.message || t('paymentFailed')
       );
     } finally {
       finishingRef.current = false;
     }
-  }, [flow, summary]);
+  }, [flow, summary, t]);
 
   // ====== Iniciar el pago ======
   const confirmar = async () => {
@@ -339,7 +358,7 @@ export default function WalletScreen() {
       // CORRECCIÓN: El ID viene dentro de incomingPayment.id
       if (!result.incomingPayment?.id) {
         console.error('❌ No se recibió ID del incoming payment:', result);
-        throw new Error('No se pudo crear el incoming payment - ID no recibido en la estructura esperada');
+        throw new Error(t('incomingPaymentError'));
       }
 
       const incomingPayment = result.incomingPayment;
@@ -356,7 +375,7 @@ export default function WalletScreen() {
 
       // Validar que tenemos todos los datos del grant
       if (!startResult.redirectUrl || !startResult.continueUri || !startResult.continueAccessToken) {
-        throw new Error('No se recibieron todos los datos necesarios del grant');
+        throw new Error(t('grantDataError'));
       }
 
       setFlow({
@@ -374,16 +393,16 @@ export default function WalletScreen() {
       console.error('❌ Error en confirmar:', e);
       setFlow(prev => ({ ...prev, status: 'failed' }));
 
-      let errorMessage = e?.message ?? 'No se pudo iniciar el pago';
+      let errorMessage = e?.message ?? t('paymentInitError');
 
       // Mensajes más específicos para el usuario
       if (errorMessage.includes('connection') || errorMessage.includes('network')) {
-        errorMessage = 'Error de conexión. Verifica que el servidor esté funcionando.';
+        errorMessage = t('connectionError');
       } else if (errorMessage.includes('incoming payment')) {
-        errorMessage = 'Error creando la solicitud de pago. Intenta nuevamente.';
+        errorMessage = t('paymentRequestError');
       }
 
-      Alert.alert('Error', errorMessage);
+      Alert.alert(t('error'), errorMessage);
     } finally {
       setLoading(false);
     }
@@ -443,20 +462,30 @@ export default function WalletScreen() {
 
   // ====== Render ======
   return (
-    <View style={s.container}>
+    <View style={[s.container, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={[s.scroll, { padding: PADDING }]} showsVerticalScrollIndicator={false} bounces>
 
         {/* Header Mejorado */}
         <View style={[s.header, { maxWidth: MAX_W }]}>
           <View style={s.headerLeft}>
-            <View style={[s.headerIcon, { borderRadius: hs(12) }]}>
-              <Ionicons name="wallet-outline" size={ms(20)} color="#42b883" />
+            <View style={[s.headerIcon, { 
+              borderRadius: hs(12),
+              backgroundColor: colors.secondary,
+              borderColor: colors.border 
+            }]}>
+              <Ionicons name="wallet-outline" size={ms(20)} color={colors.primary} />
             </View>
             <View style={s.headerTextContainer}>
-              <Text style={[s.title, { fontSize: ms(20) }]} numberOfLines={1}>
-                Pagar Estacionamiento
+              <Text style={[s.title, { 
+                fontSize: ms(20),
+                color: colors.text 
+              }]} numberOfLines={1}>
+                {t('payParking')}
               </Text>
-              <Text style={[s.subtitle, { fontSize: ms(11) }]} numberOfLines={1}>
+              <Text style={[s.subtitle, { 
+                fontSize: ms(11),
+                color: colors.textSecondary 
+              }]} numberOfLines={1}>
                 Open Payments
               </Text>
             </View>
@@ -466,7 +495,8 @@ export default function WalletScreen() {
             maxWidth: hs(65),
             minWidth: hs(45),
             paddingHorizontal: hs(6),
-            paddingVertical: vs(3)
+            paddingVertical: vs(3),
+            backgroundColor: colors.primary
           }]}>
             <Ionicons name="car" size={ms(10)} color="#0b0b0c" />
             <Text
@@ -479,137 +509,178 @@ export default function WalletScreen() {
         </View>
 
         {/* Card monto principal - USD */}
-        <View style={[s.amountCard, { maxWidth: MAX_W, borderRadius: RADIUS, padding: hs(16) }]}>
-          <Text style={[s.amountLabel, { fontSize: ms(12) }]}>Monto a Pagar</Text>
+        <View style={[s.amountCard, { 
+          maxWidth: MAX_W, 
+          borderRadius: RADIUS, 
+          padding: hs(16),
+          backgroundColor: colors.card,
+          borderColor: colors.border 
+        }]}>
+          <Text style={[s.amountLabel, { 
+            fontSize: ms(12),
+            color: colors.textSecondary 
+          }]}>{t('amountToPay')}</Text>
 
           <View style={s.amountRow}>
-            <Ionicons name="logo-usd" size={ms(28)} color="#42b883" />
-            <Text style={[s.amount, { fontSize: ms(40) }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+            <Ionicons name="logo-usd" size={ms(28)} color={colors.primary} />
+            <Text style={[s.amount, { 
+              fontSize: ms(40),
+              color: colors.primary 
+            }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
               {formatUSD(summary.amountUSD)}
             </Text>
           </View>
 
           {/* Información de tiempo */}
-          <View style={s.timeInfo}>
+          <View style={[s.timeInfo, { borderTopColor: colors.border }]}>
             <View style={s.timeRow}>
-              <Ionicons name="time-outline" size={ms(16)} color="#42b883" />
-              <Text style={s.timeLabel}>Tiempo de estacionamiento:</Text>
-              <Text style={s.timeValue}>{summary.formattedTime}</Text>
+              <Ionicons name="time-outline" size={ms(16)} color={colors.primary} />
+              <Text style={[s.timeLabel, { color: colors.textSecondary }]}>{t('parkingTime')}:</Text>
+              <Text style={[s.timeValue, { color: colors.primary }]}>{summary.formattedTime}</Text>
             </View>
           </View>
 
           {/* Conversión */}
-          <View style={s.conversionBox}>
+          <View style={[s.conversionBox, { 
+            backgroundColor: isDark ? 'rgba(108, 99, 255, 0.1)' : 'rgba(108, 99, 255, 0.05)',
+            borderColor: isDark ? 'rgba(108, 99, 255, 0.3)' : 'rgba(108, 99, 255, 0.2)'
+          }]}>
             <View style={s.conversionRow}>
-              <Ionicons name="swap-horizontal" size={ms(18)} color="#6C63FF" />
-              <Text style={s.conversionLabel}>Se convertirá a:</Text>
+              <Ionicons name="swap-horizontal" size={ms(18)} color={colors.tertiaryText} />
+              <Text style={[s.conversionLabel, { color: colors.tertiaryText }]}>{t('willConvertTo')}:</Text>
             </View>
-            <Text style={s.conversionAmount}>
+            <Text style={[s.conversionAmount, { color: colors.text }]}>
               ~{formatMXN(summary.amountMXN)}
             </Text>
-            <Text style={s.conversionRate}>
-              Tasa: 1 USD = {USD_TO_MXN_RATE} MXN
+            <Text style={[s.conversionRate, { color: colors.textSecondary }]}>
+              {t('rate')}: 1 USD = {USD_TO_MXN_RATE} MXN
             </Text>
           </View>
 
           {/* Wallets info */}
           {serverInfo && (
-            <View style={s.walletsInfo}>
+            <View style={[s.walletsInfo, { borderTopColor: colors.border }]}>
               <View style={s.walletRow}>
-                <Ionicons name="arrow-up-circle-outline" size={ms(16)} color="#ff6b6b" />
-                <Text style={s.walletLabel}>Desde:</Text>
-                <Text style={s.walletValue}>{serverInfo.sender} ({serverInfo.senderCurrency})</Text>
+                <Ionicons name="arrow-up-circle-outline" size={ms(16)} color={colors.error} />
+                <Text style={[s.walletLabel, { color: colors.textSecondary }]}>{t('from')}:</Text>
+                <Text style={[s.walletValue, { color: colors.text }]}>{serverInfo.sender} ({serverInfo.senderCurrency})</Text>
               </View>
               <View style={s.walletRow}>
-                <Ionicons name="arrow-down-circle-outline" size={ms(16)} color="#42b883" />
-                <Text style={s.walletLabel}>Hacia:</Text>
-                <Text style={s.walletValue}>{serverInfo.receiver} ({serverInfo.receiverCurrency})</Text>
+                <Ionicons name="arrow-down-circle-outline" size={ms(16)} color={colors.success} />
+                <Text style={[s.walletLabel, { color: colors.textSecondary }]}>{t('to')}:</Text>
+                <Text style={[s.walletValue, { color: colors.text }]}>{serverInfo.receiver} ({serverInfo.receiverCurrency})</Text>
               </View>
             </View>
           )}
         </View>
 
         {/* Detalles del estacionamiento */}
-        <View style={[s.card, { maxWidth: MAX_W, borderRadius: RADIUS, padding: hs(14) }]}>
-          <Text style={{ color: '#fff', fontWeight: '600', fontSize: ms(14), marginBottom: vs(8) }}>
-            Detalles del Estacionamiento
+        <View style={[s.card, { 
+          maxWidth: MAX_W, 
+          borderRadius: RADIUS, 
+          padding: hs(14),
+          backgroundColor: colors.card,
+          borderColor: colors.border 
+        }]}>
+          <Text style={{ 
+            color: colors.text, 
+            fontWeight: '600', 
+            fontSize: ms(14), 
+            marginBottom: vs(8) 
+          }}>
+            {t('parkingDetails')}
           </Text>
 
           <DetailRow
             hs={hs}
             vs={vs}
             ms={ms}
-            icon={<Ionicons name="location" size={ICON} color="#42b883" />}
-            label="Cajón"
+            colors={colors}
+            icon={<Ionicons name="location" size={ICON} color={colors.primary} />}
+            label={t('spot')}
             value={summary.spot}
-            valueColor="#42b883"
+            valueColor={colors.primary}
           />
           <DetailRow
             hs={hs}
             vs={vs}
             ms={ms}
-            icon={<Ionicons name="business-outline" size={ICON} color="#9aa0a6" />}
-            label="Estacionamiento"
+            colors={colors}
+            icon={<Ionicons name="business-outline" size={ICON} color={colors.textSecondary} />}
+            label={t('parking')}
             value={summary.parking}
           />
           <DetailRow
             hs={hs}
             vs={vs}
             ms={ms}
-            icon={<Ionicons name="time-outline" size={ICON} color="#9aa0a6" />}
-            label="Tiempo total"
+            colors={colors}
+            icon={<Ionicons name="time-outline" size={ICON} color={colors.textSecondary} />}
+            label={t('totalTime')}
             value={summary.formattedTime}
           />
           <DetailRow
             hs={hs}
             vs={vs}
             ms={ms}
-            icon={<Ionicons name="finger-print-outline" size={ICON} color="#9aa0a6" />}
-            label="Sesión"
+            colors={colors}
+            icon={<Ionicons name="finger-print-outline" size={ICON} color={colors.textSecondary} />}
+            label={t('session')}
             value={shorten(summary.nonce, 8, 6)}
           />
           <DetailRow
             hs={hs}
             vs={vs}
             ms={ms}
-            icon={<Ionicons name="calendar-outline" size={ICON} color="#9aa0a6" />}
-            label="Timestamp"
+            colors={colors}
+            icon={<Ionicons name="calendar-outline" size={ICON} color={colors.textSecondary} />}
+            label={t('timestamp')}
             value={summary.timestamp}
           />
         </View>
 
         {/* Estado del pago */}
-        <View style={[s.statusContainer, { maxWidth: MAX_W }]}>
+        <View style={[s.statusContainer, { 
+          maxWidth: MAX_W,
+          backgroundColor: colors.card,
+          borderColor: colors.border 
+        }]}>
           {flow.status === 'authorizing' && (
             <View style={s.statusRow}>
-              <ActivityIndicator size="small" color="#42b883" />
-              <Text style={s.statusText}>Autorizando pago...</Text>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={[s.statusText, { color: colors.text }]}>{t('authorizingPayment')}</Text>
             </View>
           )}
 
           {flow.status === 'processing' && (
             <View style={s.statusRow}>
-              <ActivityIndicator size="small" color="#42b883" />
-              <Text style={s.statusText}>Procesando conversión USD → MXN...</Text>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={[s.statusText, { color: colors.text }]}>{t('processingConversion')}</Text>
             </View>
           )}
 
           {flow.status === 'completed' && (
-            <View style={[s.statusRow, s.statusCompleted]}>
-              <Ionicons name="checkmark-circle" size={ms(18)} color="#42b883" />
-              <Text style={[s.statusText, s.statusCompletedText]}>¡Pago completado!</Text>
+            <View style={[s.statusRow, s.statusCompleted, { 
+              backgroundColor: isDark ? 'rgba(66, 184, 131, 0.15)' : 'rgba(46, 125, 50, 0.1)' 
+            }]}>
+              <Ionicons name="checkmark-circle" size={ms(18)} color={colors.success} />
+              <Text style={[s.statusText, s.statusCompletedText, { color: colors.success }]}>{t('paymentCompleted')}</Text>
             </View>
           )}
 
           {flow.status === 'failed' && (
-            <View style={[s.statusRow, s.statusFailed]}>
-              <Ionicons name="close-circle" size={ms(18)} color="#ff6b6b" />
-              <Text style={[s.statusText, { color: '#ff6b6b' }]}>Error en el pago</Text>
+            <View style={[s.statusRow, s.statusFailed, { 
+              backgroundColor: isDark ? 'rgba(255, 107, 107, 0.15)' : 'rgba(211, 47, 47, 0.1)' 
+            }]}>
+              <Ionicons name="close-circle" size={ms(18)} color={colors.error} />
+              <Text style={[s.statusText, { color: colors.error }]}>{t('paymentError')}</Text>
             </View>
           )}
 
           {flow.outgoingPaymentId && (
-            <Text style={s.paymentIdText}>ID: {shorten(flow.outgoingPaymentId, 18, 10)}</Text>
+            <Text style={[s.paymentIdText, { color: colors.textSecondary }]}>
+              ID: {shorten(flow.outgoingPaymentId, 18, 10)}
+            </Text>
           )}
         </View>
 
@@ -622,7 +693,8 @@ export default function WalletScreen() {
               {
                 borderRadius: hs(12),
                 paddingVertical: vs(14),
-                opacity: (loading || flow.status === 'completed') ? 0.7 : 1
+                opacity: (loading || flow.status === 'completed') ? 0.7 : 1,
+                backgroundColor: colors.primary
               }
             ]}
             onPress={confirmar}
@@ -638,30 +710,38 @@ export default function WalletScreen() {
                   color="#0b0b0c"
                 />
                 <Text style={[s.btnText, { fontSize: ms(15) }]}>
-                  {flow.status === 'completed' ? 'Pago Completado' : `Pagar ${formatUSD(summary.amountUSD)}`}
+                  {flow.status === 'completed' ? t('paymentCompleted') : `${t('pay')} ${formatUSD(summary.amountUSD)}`}
                 </Text>
               </>
             )}
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[s.btn, s.cancel, { borderRadius: hs(12), paddingVertical: vs(14) }]}
+            style={[s.btn, s.cancel, { 
+              borderRadius: hs(12), 
+              paddingVertical: vs(14),
+              backgroundColor: 'transparent',
+              borderColor: colors.border 
+            }]}
             onPress={cancelar}
             disabled={loading}
           >
-            <Ionicons name="close-circle" size={ms(18)} color="#fff" />
-            <Text style={[s.btnTextAlt, { fontSize: ms(15) }]}>Cancelar</Text>
+            <Ionicons name="close-circle" size={ms(18)} color={colors.text} />
+            <Text style={[s.btnTextAlt, { 
+              fontSize: ms(15),
+              color: colors.text 
+            }]}>{t('cancel')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
 
       {/* Modal de consentimiento */}
       <Modal visible={showConsent} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => setShowConsent(false)}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#0b0b0c' }}>
-          <View style={s.modalHeader}>
-            <Text style={s.modalTitle}>Autorizar Pago</Text>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+          <View style={[s.modalHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[s.modalTitle, { color: colors.text }]}>{t('authorizePayment')}</Text>
             <TouchableOpacity onPress={() => setShowConsent(false)} style={{ padding: 6 }}>
-              <Ionicons name="close" size={22} color="#fff" />
+              <Ionicons name="close" size={22} color={colors.text} />
             </TouchableOpacity>
           </View>
 
@@ -681,18 +761,18 @@ export default function WalletScreen() {
               setSupportMultipleWindows={true}
               originWhitelist={['*']}
               mixedContentMode="always"
-              style={{ flex: 1, backgroundColor: '#0b0b0c' }}
+              style={{ flex: 1, backgroundColor: colors.background }}
               renderLoading={() => (
-                <View style={s.webviewLoading}>
-                  <ActivityIndicator size="large" color="#42b883" />
-                  <Text style={s.webviewText}>Cargando autorización...</Text>
+                <View style={[s.webviewLoading, { backgroundColor: colors.background }]}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                  <Text style={[s.webviewText, { color: colors.text }]}>{t('loadingAuthorization')}</Text>
                 </View>
               )}
             />
           ) : (
-            <View style={s.webviewLoading}>
-              <ActivityIndicator size="large" color="#42b883" />
-              <Text style={s.webviewText}>Preparando autorización...</Text>
+            <View style={[s.webviewLoading, { backgroundColor: colors.background }]}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={[s.webviewText, { color: colors.text }]}>{t('preparingAuthorization')}</Text>
             </View>
           )}
         </SafeAreaView>
@@ -717,7 +797,7 @@ export default function WalletScreen() {
         source={require('../../assets/images/Logo_ocelon.jpg')}
         style={{
           position: 'absolute',
-          opacity: 0.04,
+          opacity: isDark ? 0.04 : 0.02,
           width: width * 0.7,
           height: width * 0.7,
           bottom: -vs(40),
@@ -735,7 +815,7 @@ export default function WalletScreen() {
 // ═══════════════════════════════════════════════════════════════
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0b0b0c' },
+  container: { flex: 1 },
   scroll: { alignItems: 'center', gap: 14 },
   header: {
     width: '100%',
@@ -758,30 +838,25 @@ const s = StyleSheet.create({
   headerIcon: {
     width: 40,
     height: 40,
-    backgroundColor: '#121215',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#1f1f25',
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
       android: { elevation: 4 },
     }),
   },
   title: {
-    color: '#fff',
     fontWeight: '800',
     flexShrink: 1,
   },
   subtitle: {
-    color: '#bdbdbd',
     flexShrink: 1,
   },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#42b883',
     borderRadius: 999,
     flexShrink: 0,
     marginLeft: 8,
@@ -794,57 +869,49 @@ const s = StyleSheet.create({
 
   amountCard: {
     width: '100%',
-    backgroundColor: '#131318',
     borderWidth: 1,
-    borderColor: '#202028',
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
       android: { elevation: 4 },
     }),
   },
-  amountLabel: { color: '#9f9faf', letterSpacing: 0.4, marginBottom: 4 },
+  amountLabel: { letterSpacing: 0.4, marginBottom: 4 },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  amount: { color: '#42b883', fontWeight: '900' },
+  amount: { fontWeight: '900' },
 
   timeInfo: {
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#202028',
   },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
-  timeLabel: { color: '#9f9faf', fontSize: 12 },
-  timeValue: { color: '#42b883', fontSize: 14, fontWeight: '600', marginLeft: 'auto' },
+  timeLabel: { fontSize: 12 },
+  timeValue: { fontSize: 14, fontWeight: '600', marginLeft: 'auto' },
 
   conversionBox: {
-    backgroundColor: 'rgba(108, 99, 255, 0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(108, 99, 255, 0.3)',
     borderRadius: 10,
     padding: 12,
     marginTop: 12,
     alignItems: 'center',
   },
   conversionRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  conversionLabel: { color: '#6C63FF', fontSize: 12 },
-  conversionAmount: { color: '#fff', fontSize: 22, fontWeight: '700' },
-  conversionRate: { color: '#9f9faf', fontSize: 11, marginTop: 4 },
+  conversionLabel: { fontSize: 12 },
+  conversionAmount: { fontSize: 22, fontWeight: '700' },
+  conversionRate: { fontSize: 11, marginTop: 4 },
 
   walletsInfo: {
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#202028',
   },
   walletRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
-  walletLabel: { color: '#9f9faf', fontSize: 12 },
-  walletValue: { color: '#fff', fontSize: 12, fontWeight: '600', marginLeft: 'auto' },
+  walletLabel: { fontSize: 12 },
+  walletValue: { fontSize: 12, fontWeight: '600', marginLeft: 'auto' },
 
   card: {
     width: '100%',
-    backgroundColor: '#151518',
     borderWidth: 1,
-    borderColor: '#202028',
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 10, shadowOffset: { width: 0, height: 6 } },
       android: { elevation: 3 },
@@ -854,27 +921,22 @@ const s = StyleSheet.create({
   statusContainer: {
     width: '100%',
     padding: 12,
-    backgroundColor: '#151518',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#202028',
     minHeight: 50,
   },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  statusText: { color: '#cfcfff', fontSize: 13 },
+  statusText: { fontSize: 13 },
   statusCompleted: {
-    backgroundColor: 'rgba(66, 184, 131, 0.15)',
     padding: 10,
     borderRadius: 8,
   },
-  statusCompletedText: { color: '#42b883', fontWeight: '600' },
+  statusCompletedText: { fontWeight: '600' },
   statusFailed: {
-    backgroundColor: 'rgba(255, 107, 107, 0.15)',
     padding: 10,
     borderRadius: 8,
   },
   paymentIdText: {
-    color: '#9aa0a6',
     fontSize: 10,
     marginTop: 8,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
@@ -882,10 +944,10 @@ const s = StyleSheet.create({
 
   actions: { width: '100%' },
   btn: { flexDirection: 'row', alignItems: 'center', gap: 10, justifyContent: 'center' },
-  confirm: { backgroundColor: '#42b883' },
-  cancel: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#3a3a42' },
-  btnText: { color: '#0b0b0c', fontWeight: '800' },
-  btnTextAlt: { color: '#fff', fontWeight: '800' },
+  confirm: { },
+  cancel: { borderWidth: 1 },
+  btnText: { fontWeight: '800' },
+  btnTextAlt: { fontWeight: '800' },
 
   modalHeader: {
     paddingHorizontal: 16,
@@ -894,14 +956,12 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
-    borderBottomColor: '#1f1f25',
   },
-  modalTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  modalTitle: { fontSize: 18, fontWeight: '700' },
   webviewLoading: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0b0b0c',
   },
-  webviewText: { color: '#fff', marginTop: 16 },
+  webviewText: { marginTop: 16 },
 });

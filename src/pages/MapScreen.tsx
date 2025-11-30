@@ -25,6 +25,7 @@ import MapView, {
 } from 'react-native-maps';
 import MapViewDirections from 'react-native-maps-directions';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useConfig } from '../contexts/ConfigContext';
 
 /* ================== CONSTANTES ================== */
 type Spot = { id: string; title: string; description?: string; latitude: number; longitude: number };
@@ -46,6 +47,19 @@ const DARK_MAP_STYLE = [
   { featureType: 'transit', stylers: [{ visibility: 'off' }] },
   { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#101015' }] },
   { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#6e6e7a' }] },
+];
+
+const LIGHT_MAP_STYLE = [
+  { elementType: 'geometry', stylers: [{ color: '#f5f5f5' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#f5f5f5' }] },
+  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#e8f5e8' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
+  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
+  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#c9c9c9' }] },
+  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#9e9e9e' }] },
 ];
 
 type Parked = { latitude: number; longitude: number; ts: number };
@@ -72,6 +86,7 @@ const haversineMeters = (a: { latitude: number; longitude: number }, b: { latitu
 export default function MapScreen() {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
+  const { t, isDark } = useConfig();
 
   // Escalas responsivas
   const BASE_W = 375, BASE_H = 812;
@@ -85,6 +100,30 @@ export default function MapScreen() {
 
   const mapRef = useRef<MapView>(null);
   const watchRef = useRef<Location.LocationSubscription | null>(null);
+
+  // Colores dinámicos
+  const colors = {
+    background: isDark ? '#0b0b0c' : '#f8f9fa',
+    cardBackground: isDark ? '#151518' : '#ffffff',
+    text: isDark ? '#ffffff' : '#000000',
+    textSecondary: isDark ? '#9aa0a6' : '#666666',
+    border: isDark ? '#202028' : '#e0e0e0',
+    primary: '#42b883',
+    warning: '#ffaa00',
+    success: '#42b883',
+    mapStyle: isDark ? DARK_MAP_STYLE : LIGHT_MAP_STYLE,
+    pinBackground: isDark ? '#42b883' : '#42b883',
+    pinBorder: isDark ? '#1c744f' : '#2e8b57',
+    pinSavedBackground: isDark ? '#ffd166' : '#ffd166',
+    pinSavedBorder: isDark ? '#b08b2c' : '#d4a017',
+    calloutBackground: isDark ? '#151518' : '#ffffff',
+    calloutBorder: isDark ? '#202028' : '#e0e0e0',
+    calloutText: isDark ? '#ffffff' : '#000000',
+    calloutDesc: isDark ? '#cfcfff' : '#666666',
+    routePillBackground: isDark ? '#7ad3ff' : '#4a90e2',
+    routePillNearBackground: isDark ? '#c7e8ff' : '#a8d5ff',
+    routePillText: '#0b0b0c',
+  };
 
   // cámara que sigue al usuario
   const [followMe, setFollowMe] = useState(true);
@@ -106,7 +145,7 @@ export default function MapScreen() {
   const [routeInfo, setRouteInfo] = useState<{ distanceKm: number; durationMin: number } | null>(null);
 
   // Nuevo estado para control 3D
-  const [is3DEnabled, setIs3DEnabled] = useState(false); // Iniciar en 2D para evitar problemas
+  const [is3DEnabled, setIs3DEnabled] = useState(false);
 
   // Solo este screen permite landscape
   useFocusEffect(
@@ -260,7 +299,7 @@ export default function MapScreen() {
       setLocating(true);
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permiso requerido', 'Activa el permiso de ubicación para centrar el mapa en tu posición.');
+        Alert.alert(t('permissionRequired'), t('locationPermissionRequired'));
         return;
       }
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -280,17 +319,17 @@ export default function MapScreen() {
         pitch: is3DEnabled ? 45 : 0,
       }, { duration: 600 });
     } catch {
-      Alert.alert('Ups', 'No se pudo obtener tu ubicación.');
+      Alert.alert(t('oops'), t('locationError'));
     } finally {
       setLocating(false);
     }
-  }, [is3DEnabled, safeAnimateCamera]);
+  }, [is3DEnabled, safeAnimateCamera, t]);
 
   const saveParkedLocation = useCallback(async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permiso requerido', 'Activa el permiso de ubicación para guardar dónde estacionaste.');
+        Alert.alert(t('permissionRequired'), t('locationPermissionRequired'));
         return;
       }
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -306,18 +345,18 @@ export default function MapScreen() {
         zoom: 16,
         pitch: is3DEnabled ? 45 : 0,
       }, { duration: 500 });
-      Alert.alert('Guardado', 'Ubicación del auto guardada.');
+      Alert.alert(t('saved'), t('locationSaved'));
     } catch {
-      Alert.alert('Ups', 'No se pudo guardar tu ubicación.');
+      Alert.alert(t('oops'), t('locationSaveError'));
     }
-  }, [is3DEnabled, safeAnimateCamera]);
+  }, [is3DEnabled, safeAnimateCamera, t]);
 
   const clearParked = useCallback(async () => {
     await AsyncStorage.removeItem(PARKED_KEY);
     setParked(null);
     setRouteInfo(null);
-    Alert.alert('Listo', 'Ubicación del auto eliminada.');
-  }, []);
+    Alert.alert(t('done'), t('locationCleared'));
+  }, [t]);
 
   const openExternalNav = useCallback(async () => {
     if (!parked) return;
@@ -355,18 +394,18 @@ export default function MapScreen() {
   const hasDirections = !!(userLoc && parked && GOOGLE_MAPS_APIKEY && !userIsNear);
 
   return (
-    <View style={s.container}>
+    <View style={[s.container, { backgroundColor: colors.background }]}>
       {/* Botón chip "Ajustar vista" */}
       <View style={[s.topChipWrap, { top: Math.max(vs(8), insets.top + vs(4)), left: hs(10) }]}>
-        <TouchableOpacity onPress={fitContextual} style={s.badge}>
+        <TouchableOpacity onPress={fitContextual} style={[s.badge, { backgroundColor: colors.primary }]}>
           <Ionicons name="resize-outline" size={ms(12)} color="#0b0b0c" />
-          <Text style={[s.badgeText, { marginLeft: 6 }]}>Ajustar vista</Text>
+          <Text style={[s.badgeText, { marginLeft: 6 }]}>{t('adjustView')}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Botón para alternar vista 3D/2D */}
       <View style={[s.topChipWrap, { top: Math.max(vs(8), insets.top + vs(4)), right: hs(10) }]}>
-        <TouchableOpacity onPress={toggle3DView} style={[s.badge, { backgroundColor: is3DEnabled ? '#7ad3ff' : '#42b883' }]}>
+        <TouchableOpacity onPress={toggle3DView} style={[s.badge, { backgroundColor: is3DEnabled ? '#7ad3ff' : colors.primary }]}>
           <Ionicons name={is3DEnabled ? "cube" : "cube-outline"} size={ms(12)} color="#0b0b0c" />
           <Text style={[s.badgeText, { marginLeft: 6 }]}>{is3DEnabled ? '3D' : '2D'}</Text>
         </TouchableOpacity>
@@ -377,7 +416,7 @@ export default function MapScreen() {
         style={s.map}
         provider={PROVIDER_GOOGLE}
         initialRegion={region}
-        customMapStyle={DARK_MAP_STYLE as any}
+        customMapStyle={colors.mapStyle as any}
         onRegionChangeComplete={setRegion}
         showsCompass
         showsUserLocation
@@ -404,13 +443,26 @@ export default function MapScreen() {
               description={spot.description}
               tracksViewChanges={false}
             >
-              <View style={[s.pin, { paddingVertical: vs(6), paddingHorizontal: hs(6), borderRadius: hs(10) }]}>
+              <View style={[s.pin, { 
+                paddingVertical: vs(6), 
+                paddingHorizontal: hs(6), 
+                borderRadius: hs(10),
+                backgroundColor: colors.pinBackground,
+                borderColor: colors.pinBorder
+              }]}>
                 <Ionicons name="car-sport" size={ms(16)} color="#0b0b0c" />
               </View>
               <Callout tooltip>
-                <View style={[s.callout, { borderRadius: hs(12), paddingVertical: vs(8), paddingHorizontal: hs(10), maxWidth: width * 0.7 }]}>
-                  <Text style={[s.calloutTitle, { fontSize: ms(14) }]}>{spot.title}</Text>
-                  {!!spot.description && <Text style={[s.calloutDesc, { fontSize: ms(12), marginTop: 2 }]}>{spot.description}</Text>}
+                <View style={[s.callout, { 
+                  borderRadius: hs(12), 
+                  paddingVertical: vs(8), 
+                  paddingHorizontal: hs(10), 
+                  maxWidth: width * 0.7,
+                  backgroundColor: colors.calloutBackground,
+                  borderColor: colors.calloutBorder
+                }]}>
+                  <Text style={[s.calloutTitle, { fontSize: ms(14), color: colors.calloutText }]}>{spot.title}</Text>
+                  {!!spot.description && <Text style={[s.calloutDesc, { fontSize: ms(12), marginTop: 2, color: colors.calloutDesc }]}>{spot.description}</Text>}
                 </View>
               </Callout>
             </Marker>
@@ -420,10 +472,16 @@ export default function MapScreen() {
         {parked && (
           <Marker
             coordinate={{ latitude: parked.latitude, longitude: parked.longitude }}
-            title="Auto estacionado"
+            title={t('parkedCar')}
             description={new Date(parked.ts).toLocaleString()}
           >
-            <View style={[s.pinSaved, { paddingVertical: vs(6), paddingHorizontal: hs(6), borderRadius: hs(10) }]}>
+            <View style={[s.pinSaved, { 
+              paddingVertical: vs(6), 
+              paddingHorizontal: hs(6), 
+              borderRadius: hs(10),
+              backgroundColor: colors.pinSavedBackground,
+              borderColor: colors.pinSavedBorder
+            }]}>
               <Ionicons name="bookmark" size={ms(16)} color="#0b0b0c" />
             </View>
           </Marker>
@@ -437,7 +495,7 @@ export default function MapScreen() {
             apikey={GOOGLE_MAPS_APIKEY}
             mode="WALKING"
             strokeWidth={Math.max(3, Math.min(6, Math.round(hs(3))))}
-            strokeColor="#7ad3ff"
+            strokeColor={colors.routePillBackground}
             optimizeWaypoints={false}
             onReady={(result) => {
               setRouteInfo({ distanceKm: result.distance, durationMin: result.duration });
@@ -462,7 +520,7 @@ export default function MapScreen() {
         {userLoc && parked && userIsNear && (
           <Polyline
             coordinates={[userLoc, { latitude: parked.latitude, longitude: parked.longitude }]}
-            strokeColor="#7ad3ff"
+            strokeColor={colors.routePillBackground}
             strokeWidth={4}
             geodesic
           />
@@ -471,22 +529,32 @@ export default function MapScreen() {
 
       {/* Píldora distancia/tiempo o mensaje de cercanía */}
       {routeInfo && !userIsNear && (
-        <View style={[s.routePill, { top: Math.max(vs(isLandscape ? 6 : 10), insets.top + vs(isLandscape ? 4 : 6)), left: hs(isLandscape ? 8 : 12) }]}>
-          <Ionicons name="walk" size={ms(isLandscape ? 12 : 14)} color="#0b0b0c" />
-          <Text style={[s.routePillText, { marginLeft: 6 }]}>
-            {routeInfo.distanceKm.toFixed(2)} km · {Math.round(routeInfo.durationMin)} min
+        <View style={[s.routePill, { 
+          top: Math.max(vs(isLandscape ? 6 : 10), insets.top + vs(isLandscape ? 4 : 6)), 
+          left: hs(isLandscape ? 8 : 12),
+          backgroundColor: colors.routePillBackground
+        }]}>
+          <Ionicons name="walk" size={ms(isLandscape ? 12 : 14)} color={colors.routePillText} />
+          <Text style={[s.routePillText, { marginLeft: 6, color: colors.routePillText }]}>
+            {routeInfo.distanceKm.toFixed(2)} {t('km')} · {Math.round(routeInfo.durationMin)} {t('min')}
           </Text>
           <TouchableOpacity onPress={openExternalNav} style={[s.routePillBtn, { marginLeft: 8 }]}>
-            <Ionicons name="open-outline" size={ms(isLandscape ? 12 : 14)} color="#0b0b0c" />
+            <Ionicons name="open-outline" size={ms(isLandscape ? 12 : 14)} color={colors.routePillText} />
           </TouchableOpacity>
         </View>
       )}
 
       {userLoc && parked && userIsNear && (
-        <View style={[s.routePillNear, { top: Math.max(vs(6), insets.top + vs(4)), left: hs(10) }]}>
-          <Ionicons name="walk" size={ms(isLandscape ? 12 : 14)} color="#0b0b0c" />
-          <Text style={[s.routePillText, { marginLeft: 6 }]}>
-            Estás a ~{Math.max(1, Math.round(haversineMeters(userLoc, { latitude: parked.latitude, longitude: parked.longitude })))} m de tu auto
+        <View style={[s.routePillNear, { 
+          top: Math.max(vs(6), insets.top + vs(4)), 
+          left: hs(10),
+          backgroundColor: colors.routePillNearBackground
+        }]}>
+          <Ionicons name="walk" size={ms(isLandscape ? 12 : 14)} color={colors.routePillText} />
+          <Text style={[s.routePillText, { marginLeft: 6, color: colors.routePillText }]}>
+            {t('nearCar', { 
+              distance: Math.max(1, Math.round(haversineMeters(userLoc, { latitude: parked.latitude, longitude: parked.longitude })))
+            })}
           </Text>
         </View>
       )}
@@ -500,7 +568,7 @@ export default function MapScreen() {
           <TouchableOpacity
             onPress={saveParkedLocation}
             style={[s.fabSave, { width: FAB, height: FAB, borderRadius: RADIUS }]}
-            accessibilityLabel="Guardar auto aquí"
+            accessibilityLabel={t('saveCarHere')}
           >
             <Ionicons name="car-sport" size={isLandscape ? ms(16) : ms(20)} color="#0b0b0c" />
           </TouchableOpacity>
@@ -508,7 +576,7 @@ export default function MapScreen() {
           <TouchableOpacity
             onPress={clearParked}
             style={[s.fabDanger, { width: FAB, height: FAB, borderRadius: RADIUS }]}
-            accessibilityLabel="Borrar ubicación guardada"
+            accessibilityLabel={t('deleteSavedLocation')}
           >
             <Ionicons name="trash" size={isLandscape ? ms(16) : ms(20)} color="#0b0b0c" />
           </TouchableOpacity>
@@ -535,8 +603,8 @@ export default function MapScreen() {
               goToMyLocation();
             }
           }}
-          style={[s.fab, { width: FAB, height: FAB, borderRadius: RADIUS }, locating && { opacity: 0.7 }]}
-          accessibilityLabel="Seguir mi movimiento"
+          style={[s.fab, { width: FAB, height: FAB, borderRadius: RADIUS, backgroundColor: colors.primary }, locating && { opacity: 0.7 }]}
+          accessibilityLabel={t('followMyMovement')}
         >
           <Ionicons name={followMe ? 'walk' : 'compass'} size={isLandscape ? ms(16) : ms(20)} color="#0b0b0c" />
         </TouchableOpacity>
@@ -547,13 +615,12 @@ export default function MapScreen() {
 
 /* ================== ESTILOS ================== */
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0b0b0c' },
+  container: { flex: 1 },
   map: { flex: 1 },
 
   // Chip superior pequeño
   topChipWrap: { position: 'absolute', zIndex: 10 },
   badge: {
-    backgroundColor: '#42b883',
     borderRadius: 999,
     flexDirection: 'row',
     alignItems: 'center',
@@ -561,33 +628,26 @@ const s = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  badgeText: { color: '#0b0b0c', fontWeight: '800' },
+  badgeText: { fontWeight: '800' },
 
   // Pins
   pin: {
-    backgroundColor: '#42b883',
     borderWidth: 1,
-    borderColor: '#1c744f',
   },
   pinSaved: {
-    backgroundColor: '#ffd166',
     borderWidth: 1,
-    borderColor: '#b08b2c',
   },
   callout: {
-    backgroundColor: '#151518',
     borderWidth: 1,
-    borderColor: '#202028',
   },
-  calloutTitle: { color: '#fff', fontWeight: '800' },
-  calloutDesc: { color: '#cfcfff' },
+  calloutTitle: { fontWeight: '800' },
+  calloutDesc: { },
 
   // Píldoras
   routePill: {
     position: 'absolute',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#7ad3ff',
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 999,
@@ -597,13 +657,12 @@ const s = StyleSheet.create({
     position: 'absolute',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#c7e8ff',
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 999,
     zIndex: 10,
   },
-  routePillText: { color: '#0b0b0c', fontWeight: '800' },
+  routePillText: { fontWeight: '800' },
   routePillBtn: {
     backgroundColor: 'rgba(0,0,0,0.08)',
     padding: 4,
@@ -616,7 +675,6 @@ const s = StyleSheet.create({
   leftFabs: { position: 'absolute', alignItems: 'flex-start' },
 
   fab: {
-    backgroundColor: '#42b883',
     alignItems: 'center',
     justifyContent: 'center',
     ...Platform.select({

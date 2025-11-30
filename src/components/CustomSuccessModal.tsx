@@ -10,6 +10,7 @@ import {
     useWindowDimensions,
     View,
 } from 'react-native';
+import { useConfig } from '../contexts/ConfigContext';
 
 interface CustomSuccessModalProps {
     visible: boolean;
@@ -31,7 +32,26 @@ export default function CustomSuccessModal({
     data,
 }: CustomSuccessModalProps) {
     const { width } = useWindowDimensions();
+    const { t, isDark } = useConfig();
     const hs = (size: number) => (width / 375) * size;
+
+    // Colores dinámicos
+    const colors = {
+        background: isDark ? '#1a1a1a' : '#ffffff',
+        cardBackground: isDark ? '#1a1a1a' : '#ffffff',
+        headerBg: isDark ? 'rgba(66, 184, 131, 0.1)' : 'rgba(66, 184, 131, 0.15)',
+        text: isDark ? '#ffffff' : '#000000',
+        textSecondary: isDark ? '#b0b0b0' : '#666666',
+        border: isDark ? '#42b883' : '#42b883',
+        secondaryBorder: isDark ? '#333' : '#e0e0e0',
+        primary: '#42b883',
+        success: '#42b883',
+        overlay: isDark ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.7)',
+        detailBg: isDark ? 'rgba(11, 11, 12, 0.5)' : 'rgba(66, 184, 131, 0.05)',
+        nextStepBg: isDark ? 'rgba(66, 184, 131, 0.1)' : 'rgba(66, 184, 131, 0.15)',
+        footerBg: isDark ? 'rgba(11, 11, 12, 0.8)' : 'rgba(248, 249, 250, 0.8)',
+        footerText: isDark ? '#85859a' : '#666666',
+    };
 
     return (
         <Modal
@@ -40,88 +60,151 @@ export default function CustomSuccessModal({
             transparent={true}
             onRequestClose={onClose}
         >
-            <View style={styles.modalOverlay}>
-                <View style={[styles.modalContent, { maxWidth: width * 0.85 }]}>
+            <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
+                <View style={[
+                    styles.modalContent, 
+                    { 
+                        maxWidth: width * 0.85,
+                        backgroundColor: colors.background,
+                        borderColor: colors.border
+                    }
+                ]}>
 
                     {/* Header con logo */}
-                    <View style={styles.header}>
+                    <View style={[styles.header, { backgroundColor: colors.headerBg }]}>
                         <Image
                             source={require('../../assets/images/Logo_ocelon.jpg')}
                             style={[styles.logo, { width: hs(70), height: hs(70) }]}
                             resizeMode="cover"
                         />
                         <View style={styles.headerText}>
-                            <Text style={styles.title}>¡Pago Exitoso! 🎉</Text>
-                            <Text style={styles.subtitle}>Ocelon Estacionamiento</Text>
+                            <Text style={[styles.title, { color: colors.primary }]}>
+                                {t('paymentSuccess')} 🎉
+                            </Text>
+                            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                                {t('ocelonParking')}
+                            </Text>
                         </View>
                     </View>
 
                     {/* Línea decorativa */}
-                    <View style={styles.divider} />
+                    <View style={[styles.divider, { backgroundColor: 'rgba(66, 184, 131, 0.3)' }]} />
 
                     {/* Icono de éxito */}
-                    <View style={styles.successIcon}>
-                        <Ionicons name="checkmark-circle" size={hs(80)} color="#42b883" />
+                    <View style={[styles.successIcon, { backgroundColor: isDark ? 'rgba(66, 184, 131, 0.05)' : 'rgba(66, 184, 131, 0.08)' }]}>
+                        <Ionicons name="checkmark-circle" size={hs(80)} color={colors.primary} />
                     </View>
 
                     {/* Información del pago */}
                     <View style={styles.infoSection}>
-                        <Text style={styles.congratsText}>
-                            Tu pago ha sido procesado exitosamente
+                        <Text style={[styles.congratsText, { color: colors.text }]}>
+                            {t('paymentProcessed')}
                         </Text>
 
                         <View style={styles.detailsGrid}>
-                            <View style={styles.detailItem}>
-                                <Ionicons name="business-outline" size={hs(20)} color="#42b883" />
-                                <Text style={styles.detailLabel}>Estacionamiento</Text>
-                                <Text style={styles.detailValue}>{data.parking}</Text>
+                            <View style={[
+                                styles.detailItem, 
+                                { 
+                                    backgroundColor: colors.detailBg,
+                                    borderColor: colors.secondaryBorder
+                                }
+                            ]}>
+                                <Ionicons name="business-outline" size={hs(20)} color={colors.primary} />
+                                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
+                                    {t('parking')}
+                                </Text>
+                                <Text style={[styles.detailValue, { color: colors.text }]}>
+                                    {data.parking}
+                                </Text>
                             </View>
 
-                            <View style={styles.detailItem}>
-                                <Ionicons name="location-outline" size={hs(20)} color="#42b883" />
-                                <Text style={styles.detailLabel}>Cajón</Text>
-                                <Text style={styles.detailValue}>{data.spot}</Text>
+                            <View style={[
+                                styles.detailItem, 
+                                { 
+                                    backgroundColor: colors.detailBg,
+                                    borderColor: colors.secondaryBorder
+                                }
+                            ]}>
+                                <Ionicons name="location-outline" size={hs(20)} color={colors.primary} />
+                                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
+                                    {t('spot')}
+                                </Text>
+                                <Text style={[styles.detailValue, { color: colors.text }]}>
+                                    {data.spot}
+                                </Text>
                             </View>
 
-                            <View style={styles.detailItem}>
-                                <Ionicons name="time-outline" size={hs(20)} color="#42b883" />
-                                <Text style={styles.detailLabel}>Tiempo</Text>
-                                <Text style={styles.detailValue}>{data.time}</Text>
+                            <View style={[
+                                styles.detailItem, 
+                                { 
+                                    backgroundColor: colors.detailBg,
+                                    borderColor: colors.secondaryBorder
+                                }
+                            ]}>
+                                <Ionicons name="time-outline" size={hs(20)} color={colors.primary} />
+                                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
+                                    {t('time')}
+                                </Text>
+                                <Text style={[styles.detailValue, { color: colors.text }]}>
+                                    {data.time}
+                                </Text>
                             </View>
 
-                            <View style={styles.detailItem}>
-                                <Ionicons name="card-outline" size={hs(20)} color="#42b883" />
-                                <Text style={styles.detailLabel}>Total Pagado</Text>
-                                <Text style={[styles.detailValue, styles.amount]}>
+                            <View style={[
+                                styles.detailItem, 
+                                { 
+                                    backgroundColor: colors.detailBg,
+                                    borderColor: colors.secondaryBorder
+                                }
+                            ]}>
+                                <Ionicons name="card-outline" size={hs(20)} color={colors.primary} />
+                                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
+                                    {t('totalPaid')}
+                                </Text>
+                                <Text style={[styles.detailValue, styles.amount, { color: colors.primary }]}>
                                     ${data.amount.toFixed(2)} USD
                                 </Text>
                             </View>
                         </View>
 
                         {/* Mensaje de siguiente paso */}
-                        <View style={styles.nextStep}>
-                            <Ionicons name="car-outline" size={hs(24)} color="#42b883" />
-                            <Text style={styles.nextStepText}>
-                                Dirígete a la salida y muestra el código QR
+                        <View style={[
+                            styles.nextStep, 
+                            { 
+                                backgroundColor: colors.nextStepBg,
+                                borderColor: 'rgba(66, 184, 131, 0.3)'
+                            }
+                        ]}>
+                            <Ionicons name="car-outline" size={hs(24)} color={colors.primary} />
+                            <Text style={[styles.nextStepText, { color: colors.primary }]}>
+                                {t('goToExit')}
                             </Text>
                         </View>
                     </View>
 
                     {/* Botón de continuar */}
                     <TouchableOpacity
-                        style={[styles.continueButton, { paddingVertical: hs(16) }]}
+                        style={[styles.continueButton, { paddingVertical: hs(16), backgroundColor: colors.primary }]}
                         onPress={onContinue}
                     >
                         <Ionicons name="arrow-forward" size={hs(20)} color="#0b0b0c" />
-                        <Text style={styles.continueButtonText}>Continuar a la Salida</Text>
+                        <Text style={styles.continueButtonText}>
+                            {t('continueToExit')}
+                        </Text>
                     </TouchableOpacity>
 
                     {/* Footer */}
-                    <View style={styles.footer}>
-                        <Text style={styles.footerText}>
-                            ID de transacción: {data.paymentId ? data.paymentId.slice(0, 12) + '...' : 'N/A'}
+                    <View style={[
+                        styles.footer, 
+                        { 
+                            backgroundColor: colors.footerBg,
+                            borderTopColor: colors.secondaryBorder
+                        }
+                    ]}>
+                        <Text style={[styles.footerText, { color: colors.footerText }]}>
+                            {t('transactionId')}: {data.paymentId ? data.paymentId.slice(0, 12) + '...' : 'N/A'}
                         </Text>
-                        <Text style={styles.footerSubText}>
+                        <Text style={[styles.footerSubText, { color: colors.textSecondary }]}>
                             {new Date().toLocaleString()}
                         </Text>
                     </View>
@@ -134,16 +217,13 @@ export default function CustomSuccessModal({
 const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
     },
     modalContent: {
-        backgroundColor: '#1a1a1a',
         borderRadius: 20,
         borderWidth: 2,
-        borderColor: '#42b883',
         overflow: 'hidden',
         width: '100%',
     },
@@ -151,7 +231,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         padding: 20,
-        backgroundColor: 'rgba(66, 184, 131, 0.1)',
     },
     logo: {
         borderRadius: 14,
@@ -163,29 +242,24 @@ const styles = StyleSheet.create({
         marginLeft: 15,
     },
     title: {
-        color: '#42b883',
         fontSize: 22,
         fontWeight: '800',
     },
     subtitle: {
-        color: '#b0b0b0',
         fontSize: 14,
         marginTop: 4,
     },
     divider: {
         height: 2,
-        backgroundColor: 'rgba(66, 184, 131, 0.3)',
     },
     successIcon: {
         alignItems: 'center',
         paddingVertical: 20,
-        backgroundColor: 'rgba(66, 184, 131, 0.05)',
     },
     infoSection: {
         padding: 20,
     },
     congratsText: {
-        color: '#fff',
         fontSize: 18,
         fontWeight: '600',
         textAlign: 'center',
@@ -203,26 +277,21 @@ const styles = StyleSheet.create({
         minWidth: '45%',
         alignItems: 'center',
         padding: 12,
-        backgroundColor: 'rgba(11, 11, 12, 0.5)',
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: '#333',
     },
     detailLabel: {
-        color: '#b0b0b0',
         fontSize: 12,
         marginTop: 6,
         textAlign: 'center',
     },
     detailValue: {
-        color: '#fff',
         fontSize: 14,
         fontWeight: '600',
         marginTop: 4,
         textAlign: 'center',
     },
     amount: {
-        color: '#42b883',
         fontWeight: '800',
         fontSize: 16,
     },
@@ -230,20 +299,16 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-        backgroundColor: 'rgba(66, 184, 131, 0.1)',
         padding: 15,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: 'rgba(66, 184, 131, 0.3)',
     },
     nextStepText: {
-        color: '#42b883',
         fontSize: 14,
         fontWeight: '600',
         flex: 1,
     },
     continueButton: {
-        backgroundColor: '#42b883',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -258,18 +323,14 @@ const styles = StyleSheet.create({
     },
     footer: {
         padding: 16,
-        backgroundColor: 'rgba(11, 11, 12, 0.8)',
         borderTopWidth: 1,
-        borderTopColor: '#333',
         alignItems: 'center',
     },
     footerText: {
-        color: '#85859a',
         fontSize: 12,
         fontFamily: 'monospace',
     },
     footerSubText: {
-        color: '#656575',
         fontSize: 10,
         marginTop: 2,
     },

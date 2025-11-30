@@ -10,6 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 
 import { RootStackParamList } from './src/navegation/types/navigation';
+import { ConfigProvider } from './src/contexts/ConfigContext'; // Añade esta línea
 
 import AppTabs from './src/pages/AppTabs';
 import CrearUsuarioScreen from './src/pages/CrearUsuarioScreen';
@@ -26,26 +27,28 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   return (
-    <NavigationContainer>
-      <StatusBar style="light" />
-      <Stack.Navigator
-        initialRouteName="Splash"
-        screenOptions={{
-          headerShown: false,
-          animation: 'slide_from_right'
-        }}
-      >
-        <Stack.Screen name="Splash" component={SplashScreen} />
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="AppTabs" component={AppTabs} />
-        <Stack.Screen name="CrearUsuario" component={CrearUsuarioScreen} />
-        <Stack.Screen name="Timer" component={TimerScreen} />
-        <Stack.Screen name="CashPayment" component={CashPayment} />
-        <Stack.Screen name="DigitalPayment" component={DigitalPayment} />
-        <Stack.Screen name="ExitScreen" component={ExitScreen} />
-        <Stack.Screen name="ValorationScreen" component={ValorationScreen} />
-        <Stack.Screen name="WalletScreen" component={WalletScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <ConfigProvider> {/* Envuelve todo con el ConfigProvider */}
+      <NavigationContainer>
+        <StatusBar style="auto" /> {/* Cambia a "auto" para que se adapte al tema */}
+        <Stack.Navigator
+          initialRouteName="Splash"
+          screenOptions={{
+            headerShown: false,
+            animation: 'slide_from_right'
+          }}
+        >
+          <Stack.Screen name="Splash" component={SplashScreen} />
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="AppTabs" component={AppTabs} />
+          <Stack.Screen name="CrearUsuario" component={CrearUsuarioScreen} />
+          <Stack.Screen name="Timer" component={TimerScreen} />
+          <Stack.Screen name="CashPayment" component={CashPayment} />
+          <Stack.Screen name="DigitalPayment" component={DigitalPayment} />
+          <Stack.Screen name="ExitScreen" component={ExitScreen} />
+          <Stack.Screen name="ValorationScreen" component={ValorationScreen} />
+          <Stack.Screen name="WalletScreen" component={WalletScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </ConfigProvider>
   );
 }

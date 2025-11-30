@@ -5,6 +5,7 @@ import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Modal from "react-native-modal";
 import { RootStackParamList } from "../navegation/types/navigation";
+import { useConfig } from '../contexts/ConfigContext'; // Importa el hook
 
 export type PayModalProps = {
   visible: boolean;
@@ -23,8 +24,19 @@ export default function PayModal({
   navigation,
   onOpenPaymentsPress
 }: PayModalProps) {
-  // Ya no usamos useAuthState aquí - la verificación se hace en TimerScreen
-  // antes de mostrar el modal
+  const { t, isDark } = useConfig(); // Usa el hook de configuración
+
+  // Colores dinámicos según el tema
+  const colors = {
+    background: isDark ? '#1a1a1a' : '#ffffff',
+    card: isDark ? '#2a2a2a' : '#f8f9fa',
+    text: isDark ? '#ffffff' : '#000000',
+    textSecondary: isDark ? '#b0b0b0' : '#666666',
+    border: isDark ? '#333333' : '#e0e0e0',
+    primary: '#42b883',
+    warning: '#ffaa00',
+    success: '#42b883',
+  };
 
   const handleDigitalPayment = () => {
     console.log('🔵 Navegando a DigitalPayment');
@@ -51,43 +63,69 @@ export default function PayModal({
       animationOut="slideOutDown"
       backdropOpacity={0.7}
     >
-      <View style={styles.modal}>
+      <View style={[styles.modal, { 
+        backgroundColor: colors.background,
+        borderColor: colors.border 
+      }]}>
         <View style={styles.modalHeader}>
-          <Text style={styles.title}>Selecciona un método de pago</Text>
+          <Text style={[styles.title, { color: colors.text }]}>
+            {t('selectPaymentMethod')}
+          </Text>
           <TouchableOpacity onPress={onClose} style={styles.closeIcon}>
-            <Ionicons name="close" size={24} color="#fff" />
+            <Ionicons name="close" size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
 
         <View style={styles.buttonsContainer}>
           {/* Pago Electrónico / Digital */}
           <TouchableOpacity
-            style={[styles.button, styles.electronicButton]}
+            style={[styles.button, styles.electronicButton, { 
+              backgroundColor: colors.card,
+              borderColor: colors.primary 
+            }]}
             onPress={handleDigitalPayment}
           >
-            <Ionicons name="card-outline" size={24} color="#fff" />
-            <Text style={styles.buttonText}>Pago Electrónico</Text>
-            <Text style={styles.buttonSubtext}>Tarjetas, Apple Pay, PayPal</Text>
+            <Ionicons name="card-outline" size={24} color={colors.primary} />
+            <Text style={[styles.buttonText, { color: colors.text }]}>
+              {t('electronicPayment')}
+            </Text>
+            <Text style={[styles.buttonSubtext, { color: colors.textSecondary }]}>
+              {t('electronicPaymentSubtext')}
+            </Text>
           </TouchableOpacity>
 
           {/* Pago en Efectivo */}
           <TouchableOpacity
-            style={[styles.button, styles.cashButton]}
+            style={[styles.button, styles.cashButton, { 
+              backgroundColor: colors.card,
+              borderColor: colors.warning 
+            }]}
             onPress={handleCashPayment}
           >
-            <Ionicons name="cash-outline" size={24} color="#fff" />
-            <Text style={styles.buttonText}>Pago en Efectivo</Text>
-            <Text style={styles.buttonSubtext}>Cajeros autorizados</Text>
+            <Ionicons name="cash-outline" size={24} color={colors.warning} />
+            <Text style={[styles.buttonText, { color: colors.text }]}>
+              {t('cashPayment')}
+            </Text>
+            <Text style={[styles.buttonSubtext, { color: colors.textSecondary }]}>
+              {t('cashPaymentSubtext')}
+            </Text>
           </TouchableOpacity>
 
           {/* Open Payments */}
           <TouchableOpacity
-            style={[styles.button, styles.openPaymentsButton]}
+            style={[styles.button, styles.openPaymentsButton, { 
+              backgroundColor: 'transparent',
+              borderColor: colors.primary 
+            }]}
             onPress={onOpenPaymentsPress}
           >
-            <Ionicons name="flash-outline" size={24} color="#42b883" />
-            <Text style={[styles.buttonText, { color: "#42b883" }]}>Open Payments</Text>
-            <Text style={[styles.buttonSubtext, { color: "#42b883" }]}>Pago instantáneo</Text>
+            <Ionicons name="flash-outline" size={24} color={colors.primary} />
+            <Text style={[styles.buttonText, { color: colors.primary }]}>
+              {t('openPayments')}
+            </Text>
+            <Text style={[styles.buttonSubtext, { color: colors.primary }]}>
+              {t('openPaymentsSubtext')}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -97,11 +135,9 @@ export default function PayModal({
 
 const styles = StyleSheet.create({
   modal: {
-    backgroundColor: "#1a1a1a",
     padding: 20,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#333",
   },
   modalHeader: {
     flexDirection: 'row',
@@ -110,7 +146,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    color: "#fff",
     fontSize: 20,
     fontWeight: "bold",
     flex: 1,
@@ -140,14 +175,12 @@ const styles = StyleSheet.create({
     borderColor: "#42b883",
   },
   buttonText: {
-    color: "#fff",
     textAlign: "center",
     fontSize: 16,
     fontWeight: "600",
     marginTop: 8,
   },
   buttonSubtext: {
-    color: "#b0b0b0",
     textAlign: "center",
     fontSize: 12,
     marginTop: 4,

@@ -13,18 +13,14 @@ import {
 } from 'react-native';
 
 import { useAuthState } from '../hooks/useAuthState';
+import { useConfig } from '../contexts/ConfigContext'; // Importa el hook
 
 export default function SupportScreen() {
   const { width } = useWindowDimensions();
+  const { t, isDark } = useConfig(); // Usa el hook de configuración
   
   // Estado de autenticación
   const { usuario, esInvitado, loading } = useAuthState();
-
-  const getUserName = () => {
-    if (loading) return 'Cargando...';
-    if (usuario) return usuario.nombre;
-    return 'Invitado';
-  };
 
   // Escalas responsivas
   const BASE_W = 375;
@@ -33,6 +29,25 @@ export default function SupportScreen() {
   
   const PADDING = hs(16);
   const MAX_W = Math.min(600, width - PADDING * 2);
+
+  // Colores dinámicos según el tema
+  const colors = {
+    background: isDark ? '#0b0b0c' : '#f8f9fa',
+    card: isDark ? '#151518' : '#ffffff',
+    text: isDark ? '#ffffff' : '#000000',
+    textSecondary: isDark ? '#a0a0a0' : '#666666',
+    border: isDark ? '#202028' : '#e0e0e0',
+    primary: '#42b883',
+    secondary: isDark ? '#1b1b20' : '#f1f3f4',
+    infoBox: isDark ? 'rgba(66, 184, 131, 0.1)' : 'rgba(66, 184, 131, 0.05)',
+    infoBoxBorder: isDark ? 'rgba(66, 184, 131, 0.2)' : 'rgba(66, 184, 131, 0.1)',
+  };
+
+  const getUserName = () => {
+    if (loading) return t('loading');
+    if (usuario) return usuario.nombre;
+    return t('guest');
+  };
 
   const handleCall = () => {
     Linking.openURL('tel:+524497510854');
@@ -47,7 +62,7 @@ export default function SupportScreen() {
   };
 
   return (
-    <View style={s.container}>
+    <View style={[s.container, { backgroundColor: colors.background }]}>
       <ScrollView
         contentContainerStyle={[s.scrollContent, { paddingHorizontal: PADDING }]}
         showsVerticalScrollIndicator={false}
@@ -58,7 +73,9 @@ export default function SupportScreen() {
             width: hs(140), 
             height: hs(140),
             borderRadius: hs(16),
-            marginBottom: hs(16)
+            marginBottom: hs(16),
+            backgroundColor: colors.card,
+            borderColor: colors.border,
           }]}>
             <Image
               source={require('../../assets/images/Logo_ocelon.jpg')}
@@ -66,11 +83,17 @@ export default function SupportScreen() {
             />
           </View>
 
-          <Text style={[s.title, { fontSize: ms(30) }]}>Soporte</Text>
+          <Text style={[s.title, { 
+            fontSize: ms(30),
+            color: colors.text 
+          }]}>{t('support')}</Text>
 
-          {/* ← Nombre dinámico reemplazando (Nombre) */}
-          <Text style={[s.greeting, { fontSize: ms(18) }]}>
-            Hola {getUserName()}
+          {/* Nombre dinámico */}
+          <Text style={[s.greeting, { 
+            fontSize: ms(18),
+            color: colors.textSecondary 
+          }]}>
+            {t('hello')} {getUserName()}
           </Text>
         </View>
 
@@ -79,59 +102,122 @@ export default function SupportScreen() {
           
           {/* Sección: ¿Tienes un problema? */}
           <View style={s.section}>
-            <Text style={[s.sectionTitle, { fontSize: ms(17) }]}>¿Tienes un problema?</Text>
+            <Text style={[s.sectionTitle, { 
+              fontSize: ms(17),
+              color: colors.text 
+            }]}>{t('haveProblem')}</Text>
 
-            <TouchableOpacity style={[s.card, { borderRadius: hs(14), padding: hs(14) }]} onPress={handleCall} activeOpacity={0.7}>
+            <TouchableOpacity 
+              style={[s.card, { 
+                borderRadius: hs(14), 
+                padding: hs(14),
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+              }]} 
+              onPress={handleCall} 
+              activeOpacity={0.7}
+            >
               <View style={s.cardContent}>
-                <Ionicons name="call-outline" size={ms(20)} color="#42b883" />
-                <Text style={[s.cardText, { fontSize: ms(14) }]} numberOfLines={2}>
-                  Contáctanos al número +524497510854
+                <Ionicons name="call-outline" size={ms(20)} color={colors.primary} />
+                <Text style={[s.cardText, { 
+                  fontSize: ms(14),
+                  color: colors.text 
+                }]} numberOfLines={2}>
+                  {t('contactUsPhone')}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={ms(18)} color="#666" />
+              <Ionicons name="chevron-forward" size={ms(18)} color={colors.textSecondary} />
             </TouchableOpacity>
 
-            <TouchableOpacity style={[s.card, { borderRadius: hs(14), padding: hs(14) }]} onPress={handleEmail} activeOpacity={0.7}>
+            <TouchableOpacity 
+              style={[s.card, { 
+                borderRadius: hs(14), 
+                padding: hs(14),
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+              }]} 
+              onPress={handleEmail} 
+              activeOpacity={0.7}
+            >
               <View style={s.cardContent}>
-                <Ionicons name="mail-outline" size={ms(20)} color="#42b883" />
-                <Text style={[s.cardText, { fontSize: ms(14) }]} numberOfLines={2}>
-                  Contáctanos al correo electrónico
+                <Ionicons name="mail-outline" size={ms(20)} color={colors.primary} />
+                <Text style={[s.cardText, { 
+                  fontSize: ms(14),
+                  color: colors.text 
+                }]} numberOfLines={2}>
+                  {t('contactUsEmail')}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={ms(18)} color="#666" />
+              <Ionicons name="chevron-forward" size={ms(18)} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
           {/* Sección: ¿Tienes alguna queja? */}
           <View style={s.section}>
-            <Text style={[s.sectionTitle, { fontSize: ms(17) }]}>¿Tienes alguna queja?</Text>
+            <Text style={[s.sectionTitle, { 
+              fontSize: ms(17),
+              color: colors.text 
+            }]}>{t('haveComplaint')}</Text>
 
-            <TouchableOpacity style={[s.card, { borderRadius: hs(14), padding: hs(14) }]} onPress={handleEmail} activeOpacity={0.7}>
+            <TouchableOpacity 
+              style={[s.card, { 
+                borderRadius: hs(14), 
+                padding: hs(14),
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+              }]} 
+              onPress={handleEmail} 
+              activeOpacity={0.7}
+            >
               <View style={s.cardContent}>
-                <Ionicons name="mail-outline" size={ms(20)} color="#42b883" />
-                <Text style={[s.cardText, { fontSize: ms(14) }]} numberOfLines={2}>
-                  Contáctanos al correo electrónico
+                <Ionicons name="mail-outline" size={ms(20)} color={colors.primary} />
+                <Text style={[s.cardText, { 
+                  fontSize: ms(14),
+                  color: colors.text 
+                }]} numberOfLines={2}>
+                  {t('contactUsEmail')}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={ms(18)} color="#666" />
+              <Ionicons name="chevron-forward" size={ms(18)} color={colors.textSecondary} />
             </TouchableOpacity>
 
-            <TouchableOpacity style={[s.card, { borderRadius: hs(14), padding: hs(14) }]} onPress={handleWhatsApp} activeOpacity={0.7}>
+            <TouchableOpacity 
+              style={[s.card, { 
+                borderRadius: hs(14), 
+                padding: hs(14),
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+              }]} 
+              onPress={handleWhatsApp} 
+              activeOpacity={0.7}
+            >
               <View style={s.cardContent}>
-                <MaterialIcons name="phone" size={ms(20)} color="#42b883" />
-                <Text style={[s.cardText, { fontSize: ms(14) }]} numberOfLines={2}>
-                  Escríbenos por WhatsApp
+                <MaterialIcons name="phone" size={ms(20)} color={colors.primary} />
+                <Text style={[s.cardText, { 
+                  fontSize: ms(14),
+                  color: colors.text 
+                }]} numberOfLines={2}>
+                  {t('contactUsWhatsApp')}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={ms(18)} color="#666" />
+              <Ionicons name="chevron-forward" size={ms(18)} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
           {/* Información adicional */}
-          <View style={[s.infoBox, { borderRadius: hs(12), padding: hs(14) }]}>
-            <Ionicons name="information-circle-outline" size={ms(22)} color="#42b883" />
-            <Text style={[s.infoText, { fontSize: ms(12), lineHeight: ms(17) }]}>
-              Nuestro equipo de soporte está disponible de lunes a viernes de 9:00 AM a 6:00 PM
+          <View style={[s.infoBox, { 
+            borderRadius: hs(12), 
+            padding: hs(14),
+            backgroundColor: colors.infoBox,
+            borderColor: colors.infoBoxBorder,
+          }]}>
+            <Ionicons name="information-circle-outline" size={ms(22)} color={colors.primary} />
+            <Text style={[s.infoText, { 
+              fontSize: ms(12), 
+              lineHeight: ms(17),
+              color: colors.textSecondary 
+            }]}>
+              {t('supportSchedule')}
             </Text>
           </View>
 
@@ -144,7 +230,6 @@ export default function SupportScreen() {
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0b0b0c',
   },
   scrollContent: {
     paddingTop: 16,
@@ -155,9 +240,7 @@ const s = StyleSheet.create({
     marginBottom: 24,
   },
   logoContainer: {
-    backgroundColor: '#151518',
     borderWidth: 2,
-    borderColor: '#2a2a30',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -171,28 +254,23 @@ const s = StyleSheet.create({
   },
   title: {
     fontWeight: '800',
-    color: '#ffffff',
     marginBottom: 6,
   },
   greeting: {
-    color: '#9f9faf',
   },
   section: {
     marginBottom: 24,
   },
   sectionTitle: {
     fontWeight: '700',
-    color: '#ffffff',
     marginBottom: 10,
   },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#151518',
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#202028',
     shadowColor: '#000',
     shadowOpacity: 0.2,
     shadowRadius: 6,
@@ -207,7 +285,6 @@ const s = StyleSheet.create({
     minWidth: 0,
   },
   cardText: {
-    color: '#e0e0e5',
     fontWeight: '500',
     flex: 1,
   },
@@ -215,13 +292,10 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: 'rgba(66, 184, 131, 0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(66, 184, 131, 0.2)',
     marginTop: 8,
   },
   infoText: {
     flex: 1,
-    color: '#c9c9cf',
   },
 });

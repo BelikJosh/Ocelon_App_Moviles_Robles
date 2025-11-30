@@ -19,6 +19,7 @@ import {
 import QRCode from "react-native-qrcode-svg";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from "../navegation/types/navigation";
+import { useConfig } from '../contexts/ConfigContext'; // Importa el hook
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "ExitScreen">;
@@ -50,12 +51,28 @@ const USD_TO_MXN = 17.5;
 export default function ExitScreen({ navigation, route }: Props) {
   const { rawQrData, monto, referencia } = route.params;
   const insets = useSafeAreaInsets();
+  const { t, isDark } = useConfig(); // Usa el hook de configuración
 
   // Escalas responsivas
   const { width, height } = useWindowDimensions();
   const hs = (size: number) => (width / BASE_W) * size;
   const vs = (size: number) => (height / BASE_H) * size;
   const ms = (size: number, factor = 0.5) => size + (hs(size) - size) * factor;
+
+  // Colores dinámicos según el tema
+  const colors = {
+    background: isDark ? '#0b0b0c' : '#f8f9fa',
+    card: isDark ? 'rgba(20, 20, 25, 0.8)' : 'rgba(255, 255, 255, 0.9)',
+    text: isDark ? '#ffffff' : '#000000',
+    textSecondary: isDark ? '#9aa0a6' : '#666666',
+    border: isDark ? '#202028' : '#e0e0e0',
+    primary: '#42b883',
+    success: '#42b883',
+    warning: '#ffaa00',
+    error: '#ff4444',
+    progressBg: isDark ? '#202028' : '#e0e0e0',
+    blurTint: isDark ? 'dark' : 'light' as 'dark' | 'light',
+  };
 
   const [seconds, setSeconds] = useState(TOTAL_SECONDS);
   const startTimeRef = useRef(Date.now());
@@ -66,21 +83,21 @@ export default function ExitScreen({ navigation, route }: Props) {
   const montoInMXN = (monto || 0) * USD_TO_MXN;
 
   const getTimerColor = (sec: number) => {
-    if (sec >= 11) return "#42b883"; // verde
-    if (sec >= 6) return "#ffaa00"; // amarillo
-    return "#ff4444"; // rojo
+    if (sec >= 11) return colors.success; // verde
+    if (sec >= 6) return colors.warning; // amarillo
+    return colors.error; // rojo
   };
 
   const getTimerBgColor = (sec: number) => {
-    if (sec >= 11) return "rgba(66, 184, 131, 0.15)";
-    if (sec >= 6) return "rgba(255, 170, 0, 0.15)";
-    return "rgba(255, 68, 68, 0.15)";
+    if (sec >= 11) return isDark ? "rgba(66, 184, 131, 0.15)" : "rgba(66, 184, 131, 0.1)";
+    if (sec >= 6) return isDark ? "rgba(255, 170, 0, 0.15)" : "rgba(255, 170, 0, 0.1)";
+    return isDark ? "rgba(255, 68, 68, 0.15)" : "rgba(255, 68, 68, 0.1)";
   };
 
   const getTimerMessage = (sec: number) => {
-    if (sec >= 11) return "¡Tienes tiempo suficiente!";
-    if (sec >= 6) return "Apresúrate, queda poco tiempo";
-    return "¡Muestra el código ahora!";
+    if (sec >= 11) return t('enoughTime');
+    if (sec >= 6) return t('hurryUp');
+    return t('showCodeNow');
   };
 
   const getTimerIcon = (sec: number): any => {
@@ -149,7 +166,7 @@ export default function ExitScreen({ navigation, route }: Props) {
       // Notificación solo cuando cambia el color
       if (prevColorRef.current !== currentColor) {
         prevColorRef.current = currentColor;
-        await sendNotification(`Tiempo restante: ${sec}s`, getTimerMessage(sec));
+        await sendNotification(`${t('timeRemaining')}: ${sec}s`, getTimerMessage(sec));
       }
 
       // Terminar timer y navegar a Timer (solo si NO hemos ido a ValorationScreen)
@@ -165,7 +182,7 @@ export default function ExitScreen({ navigation, route }: Props) {
     }, 500);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [t]);
 
   // Botón para simular QR escaneado y finalizar
   const simulateQrScanned = () => {
@@ -177,7 +194,7 @@ export default function ExitScreen({ navigation, route }: Props) {
     const paymentMethod = detectPaymentMethod(referencia, rawQrData);
 
     navigation.navigate("ValorationScreen", {
-      parking: "Ocelon Estacionamiento",
+      parking: t('ocelonParking'),
       spot: "A-15",
       amount: monto || 0,
       time: "00:15:00",
@@ -189,41 +206,55 @@ export default function ExitScreen({ navigation, route }: Props) {
   const CARD_RADIUS = hs(20);
 
   return (
-    <View style={s.container}>
+    <View style={[s.container, { backgroundColor: colors.background }]}>
       {/* Logo de fondo transparente */}
       <Image
         source={require('../../assets/images/Logo_ocelon.jpg')}
         style={[s.backgroundLogo, {
           width: width * 0.8,
           height: width * 0.8,
+          opacity: isDark ? 0.05 : 0.03,
         }]}
         resizeMode="contain"
       />
 
       {/* Header con ícono de éxito */}
       <View style={[s.header, { paddingTop: insets.top + vs(20) }]}>
-        <View style={s.successIconContainer}>
-          <Ionicons name="checkmark-circle" size={ms(32)} color="#42b883" />
+        <View style={[s.successIconContainer, { 
+          backgroundColor: isDark ? 'rgba(66, 184, 131, 0.15)' : 'rgba(66, 184, 131, 0.1)',
+          borderColor: isDark ? 'rgba(66, 184, 131, 0.3)' : 'rgba(66, 184, 131, 0.2)',
+        }]}>
+          <Ionicons name="checkmark-circle" size={ms(32)} color={colors.primary} />
         </View>
-        <Text style={[s.headerTitle, { fontSize: ms(24) }]}>¡Pago Confirmado!</Text>
-        <Text style={[s.headerSubtitle, { fontSize: ms(14) }]}>
-          Muestra este código en la salida
+        <Text style={[s.headerTitle, { 
+          fontSize: ms(24),
+          color: colors.primary 
+        }]}>{t('paymentConfirmed')}</Text>
+        <Text style={[s.headerSubtitle, { 
+          fontSize: ms(14),
+          color: colors.textSecondary 
+        }]}>
+          {t('showThisCode')}
         </Text>
       </View>
 
       {/* Card principal con QR */}
-      <BlurView intensity={40} tint="dark" style={[s.mainCard, { borderRadius: CARD_RADIUS }]}>
+      <BlurView intensity={40} tint={colors.blurTint} style={[s.mainCard, { 
+        borderRadius: CARD_RADIUS,
+        backgroundColor: colors.card,
+        borderColor: colors.border 
+      }]}>
         {/* Información del pago */}
         {monto !== undefined && (
-          <View style={s.paymentInfo}>
+          <View style={[s.paymentInfo, { borderBottomColor: colors.border }]}>
             <View style={s.paymentRow}>
-              <Text style={s.paymentLabel}>Monto pagado</Text>
-              <Text style={s.paymentValue}>${montoInMXN.toFixed(2)} MXN</Text>
+              <Text style={[s.paymentLabel, { color: colors.textSecondary }]}>{t('amountPaid')}</Text>
+              <Text style={[s.paymentValue, { color: colors.primary }]}>${montoInMXN.toFixed(2)} MXN</Text>
             </View>
             {referencia && (
               <View style={s.paymentRow}>
-                <Text style={s.paymentLabel}>Referencia</Text>
-                <Text style={s.paymentRef}>{referencia.slice(-12)}</Text>
+                <Text style={[s.paymentLabel, { color: colors.textSecondary }]}>{t('reference')}</Text>
+                <Text style={[s.paymentRef, { color: colors.text }]}>{referencia.slice(-12)}</Text>
               </View>
             )}
           </View>
@@ -231,8 +262,11 @@ export default function ExitScreen({ navigation, route }: Props) {
 
         {/* QR Code */}
         <View style={s.qrSection}>
-          <View style={[s.qrWrapper, { borderRadius: hs(16) }]}>
-            <View style={s.qrInner}>
+          <View style={[s.qrWrapper, { 
+            borderRadius: hs(16),
+            backgroundColor: '#fff',
+          }]}>
+            <View style={[s.qrInner, { backgroundColor: '#fff' }]}>
               <QRCode
                 value={rawQrData || 'ocelon-exit'}
                 size={hs(180)}
@@ -244,18 +278,27 @@ export default function ExitScreen({ navigation, route }: Props) {
 
           {/* Indicador de escaneo */}
           <View style={s.scanHint}>
-            <Ionicons name="scan-outline" size={ms(16)} color="#9aa0a6" />
-            <Text style={s.scanHintText}>Escanea en la barrera de salida</Text>
+            <Ionicons name="scan-outline" size={ms(16)} color={colors.textSecondary} />
+            <Text style={[s.scanHintText, { color: colors.textSecondary }]}>{t('scanAtExit')}</Text>
           </View>
         </View>
 
         {/* Temporizador */}
-        <View style={[s.timerSection, { backgroundColor: getTimerBgColor(seconds) }]}>
-          <View style={[s.timerCircle, { borderColor: getTimerColor(seconds) }]}>
-            <Text style={[s.timerText, { color: getTimerColor(seconds), fontSize: ms(36) }]}>
+        <View style={[s.timerSection, { 
+          backgroundColor: getTimerBgColor(seconds),
+          borderTopColor: colors.border 
+        }]}>
+          <View style={[s.timerCircle, { 
+            borderColor: getTimerColor(seconds),
+            backgroundColor: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.3)'
+          }]}>
+            <Text style={[s.timerText, { 
+              color: getTimerColor(seconds), 
+              fontSize: ms(36) 
+            }]}>
               {seconds}
             </Text>
-            <Text style={[s.timerUnit, { color: getTimerColor(seconds) }]}>seg</Text>
+            <Text style={[s.timerUnit, { color: getTimerColor(seconds) }]}>{t('seconds')}</Text>
           </View>
 
           <View style={s.timerInfo}>
@@ -269,8 +312,8 @@ export default function ExitScreen({ navigation, route }: Props) {
                 {getTimerMessage(seconds)}
               </Text>
             </View>
-            <Text style={s.timerHint}>
-              El código expirará cuando el tiempo termine
+            <Text style={[s.timerHint, { color: colors.textSecondary }]}>
+              {t('codeWillExpire')}
             </Text>
           </View>
         </View>
@@ -278,7 +321,7 @@ export default function ExitScreen({ navigation, route }: Props) {
 
       {/* Barra de progreso visual */}
       <View style={s.progressContainer}>
-        <View style={s.progressBg}>
+        <View style={[s.progressBg, { backgroundColor: colors.progressBg }]}>
           <View
             style={[
               s.progressFill,
@@ -293,27 +336,34 @@ export default function ExitScreen({ navigation, route }: Props) {
 
       {/* Botón de simulación (Debug) */}
       <TouchableOpacity
-        style={[s.simulateBtn, { borderRadius: CARD_RADIUS }]}
+        style={[s.simulateBtn, { 
+          borderRadius: CARD_RADIUS,
+          backgroundColor: colors.primary 
+        }]}
         onPress={simulateQrScanned}
         activeOpacity={0.8}
       >
         <Ionicons name="qr-code" size={ms(20)} color="#0b0b0c" />
         <Text style={[s.simulateBtnText, { fontSize: ms(16) }]}>
-          Simular QR Escaneado
+          {t('simulateQRScanned')}
         </Text>
       </TouchableOpacity>
 
       {/* Nota de ayuda */}
       <View style={s.helpNote}>
-        <Ionicons name="information-circle-outline" size={ms(16)} color="#9aa0a6" />
-        <Text style={s.helpNoteText}>
-          Si tienes problemas, contacta al personal del estacionamiento
+        <Ionicons name="information-circle-outline" size={ms(16)} color={colors.textSecondary} />
+        <Text style={[s.helpNoteText, { color: colors.textSecondary }]}>
+          {t('contactStaff')}
         </Text>
       </View>
 
       {/* Footer */}
-      <Text style={[s.footer, { fontSize: ms(11), marginBottom: insets.bottom + vs(16) }]}>
-        © {new Date().getFullYear()} Ocelon — Estacionamiento Inteligente
+      <Text style={[s.footer, { 
+        fontSize: ms(11), 
+        marginBottom: insets.bottom + vs(16),
+        color: colors.textSecondary 
+      }]}>
+        © {new Date().getFullYear()} Ocelon — {t('smartParking')}
       </Text>
     </View>
   );
@@ -322,7 +372,6 @@ export default function ExitScreen({ navigation, route }: Props) {
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0b0b0c',
     alignItems: 'center',
   },
   backgroundLogo: {
@@ -333,7 +382,6 @@ const s = StyleSheet.create({
       { translateX: -150 },
       { translateY: -150 }
     ],
-    opacity: 0.05,
     zIndex: 0,
   },
 
@@ -347,20 +395,16 @@ const s = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(66, 184, 131, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
     borderWidth: 2,
-    borderColor: 'rgba(66, 184, 131, 0.3)',
   },
   headerTitle: {
-    color: '#42b883',
     fontWeight: '800',
     textAlign: 'center',
   },
   headerSubtitle: {
-    color: '#9aa0a6',
     textAlign: 'center',
     marginTop: 6,
   },
@@ -369,9 +413,7 @@ const s = StyleSheet.create({
   mainCard: {
     width: '90%',
     maxWidth: 400,
-    backgroundColor: 'rgba(20, 20, 25, 0.8)',
     borderWidth: 1,
-    borderColor: '#202028',
     overflow: 'hidden',
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 15, shadowOffset: { width: 0, height: 8 } },
@@ -383,7 +425,6 @@ const s = StyleSheet.create({
   paymentInfo: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#202028',
   },
   paymentRow: {
     flexDirection: 'row',
@@ -392,16 +433,13 @@ const s = StyleSheet.create({
     paddingVertical: 4,
   },
   paymentLabel: {
-    color: '#9aa0a6',
     fontSize: 13,
   },
   paymentValue: {
-    color: '#42b883',
     fontSize: 16,
     fontWeight: '700',
   },
   paymentRef: {
-    color: '#fff',
     fontSize: 12,
     fontWeight: '600',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
@@ -414,7 +452,6 @@ const s = StyleSheet.create({
   },
   qrWrapper: {
     padding: 4,
-    backgroundColor: '#fff',
     ...Platform.select({
       ios: { shadowColor: '#42b883', shadowOpacity: 0.2, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
       android: { elevation: 4 },
@@ -422,7 +459,6 @@ const s = StyleSheet.create({
   },
   qrInner: {
     padding: 12,
-    backgroundColor: '#fff',
     borderRadius: 12,
   },
   scanHint: {
@@ -432,7 +468,6 @@ const s = StyleSheet.create({
     marginTop: 16,
   },
   scanHintText: {
-    color: '#9aa0a6',
     fontSize: 12,
   },
 
@@ -443,7 +478,6 @@ const s = StyleSheet.create({
     padding: 16,
     gap: 16,
     borderTopWidth: 1,
-    borderTopColor: '#202028',
   },
   timerCircle: {
     width: 80,
@@ -452,7 +486,6 @@ const s = StyleSheet.create({
     borderWidth: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   timerText: {
     fontWeight: '800',
@@ -478,7 +511,6 @@ const s = StyleSheet.create({
     flex: 1,
   },
   timerHint: {
-    color: '#9aa0a6',
     fontSize: 11,
   },
 
@@ -490,7 +522,6 @@ const s = StyleSheet.create({
   },
   progressBg: {
     height: 6,
-    backgroundColor: '#202028',
     borderRadius: 3,
     overflow: 'hidden',
   },
@@ -505,7 +536,6 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    backgroundColor: '#42b883',
     paddingVertical: 14,
     paddingHorizontal: 28,
     marginTop: 24,
@@ -528,14 +558,12 @@ const s = StyleSheet.create({
     paddingHorizontal: 20,
   },
   helpNoteText: {
-    color: '#9aa0a6',
     fontSize: 12,
     textAlign: 'center',
   },
 
   // Footer
   footer: {
-    color: '#85859a',
     textAlign: 'center',
     marginTop: 'auto',
   },

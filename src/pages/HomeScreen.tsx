@@ -15,6 +15,7 @@ import {
   View
 } from 'react-native';
 import { RootStackParamList } from '../navegation/types/navigation';
+import { useConfig } from '../contexts/ConfigContext'; // Importa el hook
 
 const BASE_W = 375;
 const BASE_H = 812;
@@ -22,6 +23,7 @@ const BASE_H = 812;
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { t, isDark } = useConfig(); // Usa el hook de configuración
 
   // Escalas responsivas
   const hs = (size: number) => (width / BASE_W) * size;
@@ -34,6 +36,19 @@ export default function HomeScreen() {
   const CARD_RADIUS = hs(18);
   const ICON_SIZE = ms(22);
   const MAX_W = 720;
+
+  // Colores dinámicos según el tema
+  const colors = {
+    background: isDark ? '#0b0b0c' : '#f8f9fa',
+    card: isDark ? '#151518' : '#ffffff',
+    text: isDark ? '#ffffff' : '#000000',
+    textSecondary: isDark ? '#a0a0a0' : '#666666',
+    border: isDark ? '#202028' : '#e0e0e0',
+    primary: '#42b883',
+    secondary: isDark ? '#1b1b20' : '#f1f3f4',
+    error: isDark ? '#ff6b6b' : '#d32f2f',
+    overlay: isDark ? 'rgba(0, 0, 0, 0.9)' : 'rgba(0, 0, 0, 0.7)',
+  };
 
   // Pull to refresh
   const [refreshing, setRefreshing] = useState(false);
@@ -63,7 +78,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={s.container}>
+    <View style={[s.container, { backgroundColor: colors.background }]}>
       <ScrollView
         contentContainerStyle={{
           flexGrow: 1,
@@ -74,7 +89,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         bounces
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#42b883" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
       >
         <View style={{ width: '100%', alignItems: 'center', flex: 1, justifyContent: 'center' }}>
@@ -86,9 +101,9 @@ export default function HomeScreen() {
               borderRadius: (LOGO + hs(24)) / 2,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: '#121215',
+              backgroundColor: colors.secondary,
               borderWidth: Math.max(1, hs(2)),
-              borderColor: '#2a2a30',
+              borderColor: colors.border,
               shadowColor: '#000',
               shadowOpacity: 0.35,
               shadowRadius: 12,
@@ -111,16 +126,26 @@ export default function HomeScreen() {
 
           {/* Slogan */}
           <View style={{ maxWidth: MAX_W, width: '100%', alignItems: 'center' }}>
-            <Text style={[s.kicker, { fontSize: ms(14), marginBottom: vs(6) }]}>
-              Welcome to Ocelon
+            <Text style={[s.kicker, { 
+              fontSize: ms(14), 
+              marginBottom: vs(6),
+              color: colors.textSecondary 
+            }]}>
+              {t('welcomeTo')} Ocelon
             </Text>
             <Text
               style={[
-                s.title,
-                { fontSize: ms(28), lineHeight: ms(34), marginBottom: vs(8), textAlign: 'center' },
+                s.title, 
+                { 
+                  fontSize: ms(28), 
+                  lineHeight: ms(34), 
+                  marginBottom: vs(8), 
+                  textAlign: 'center',
+                  color: colors.text 
+                },
               ]}
             >
-              Park with ease, <Text style={{ color: '#42b883' }}>pay with speed</Text>, live a better life.
+              {t('sloganPart1')} <Text style={{ color: colors.primary }}>{t('sloganPart2')}</Text>, {t('sloganPart3')}
             </Text>
 
             {/* Brand row con mini logo */}
@@ -129,7 +154,10 @@ export default function HomeScreen() {
                 source={require('../../assets/images/Logo_ocelon.jpg')}
                 style={{ width: hs(24), height: hs(24), borderRadius: hs(6) }}
               />
-              <Text style={[s.subtitle, { fontSize: ms(13) }]}>Estaciona fácil, paga rápido, vive mejor</Text>
+              <Text style={[s.subtitle, { 
+                fontSize: ms(13),
+                color: colors.textSecondary 
+              }]}>{t('spanishSlogan')}</Text>
             </View>
           </View>
 
@@ -150,27 +178,30 @@ export default function HomeScreen() {
               vs={vs}
               ms={ms}
               radius={CARD_RADIUS}
-              icon={<Ionicons name="car-outline" size={ICON_SIZE} color="#9aa0a6" />}
-              title="Entrada ágil"
-              text="Genera tu QR en segundos para acceder sin filas."
+              colors={colors}
+              icon={<Ionicons name="car-outline" size={ICON_SIZE} color={colors.textSecondary} />}
+              title={t('feature1Title')}
+              text={t('feature1Text')}
             />
             <FeatureCard
               hs={hs}
               vs={vs}
               ms={ms}
               radius={CARD_RADIUS}
-              icon={<Ionicons name="qr-code-outline" size={ICON_SIZE} color="#9aa0a6" />}
-              title="Pago con QR"
-              text="Compatible con Open Payments. Simple y directo."
+              colors={colors}
+              icon={<Ionicons name="qr-code-outline" size={ICON_SIZE} color={colors.textSecondary} />}
+              title={t('feature2Title')}
+              text={t('feature2Text')}
             />
             <FeatureCard
               hs={hs}
               vs={vs}
               ms={ms}
               radius={CARD_RADIUS}
-              icon={<Ionicons name="map-outline" size={ICON_SIZE} color="#9aa0a6" />}
-              title="Ubica tu sitio"
-              text="Consulta mapa y zonas disponibles al instante."
+              colors={colors}
+              icon={<Ionicons name="map-outline" size={ICON_SIZE} color={colors.textSecondary} />}
+              title={t('feature3Title')}
+              text={t('feature3Text')}
             />
           </View>
 
@@ -181,17 +212,26 @@ export default function HomeScreen() {
               paddingVertical: vs(14),
               paddingHorizontal: hs(24),
               marginBottom: vs(16),
+              backgroundColor: isDark ? 'rgba(255, 107, 107, 0.1)' : 'rgba(211, 47, 47, 0.1)',
+              borderColor: isDark ? 'rgba(255, 107, 107, 0.3)' : 'rgba(211, 47, 47, 0.3)',
             }]}
             onPress={handleLogoutPress}
             activeOpacity={0.8}
           >
-            <Ionicons name="log-out-outline" size={ms(20)} color="#ff6b6b" />
-            <Text style={[s.logoutButtonText, { fontSize: ms(15) }]}>Cerrar Sesión</Text>
+            <Ionicons name="log-out-outline" size={ms(20)} color={colors.error} />
+            <Text style={[s.logoutButtonText, { 
+              fontSize: ms(15),
+              color: colors.error 
+            }]}>{t('logout')}</Text>
           </TouchableOpacity>
 
           {/* Footer */}
-          <Text style={[s.footer, { fontSize: ms(12), marginBottom: vs(24) }]}>
-            © {new Date().getFullYear()} Ocelon — All rights reserved.
+          <Text style={[s.footer, { 
+            fontSize: ms(12), 
+            marginBottom: vs(24),
+            color: colors.textSecondary 
+          }]}>
+            © {new Date().getFullYear()} Ocelon — {t('allRightsReserved')}
           </Text>
         </View>
       </ScrollView>
@@ -203,13 +243,20 @@ export default function HomeScreen() {
         transparent={true}
         onRequestClose={handleCancelLogout}
       >
-        <View style={s.modalOverlay}>
-          <View style={[s.modalContent, { maxWidth: width * 0.85, borderRadius: hs(16) }]}>
+        <View style={[s.modalOverlay, { backgroundColor: colors.overlay }]}>
+          <View style={[s.modalContent, { 
+            maxWidth: width * 0.85, 
+            borderRadius: hs(16),
+            backgroundColor: colors.card,
+            borderColor: colors.primary 
+          }]}>
             {/* Logo de Ocelon */}
             <View style={[s.modalLogoContainer, { 
               width: hs(100), 
               height: hs(100), 
-              borderRadius: hs(50) 
+              borderRadius: hs(50),
+              backgroundColor: isDark ? 'rgba(66, 184, 131, 0.1)' : 'rgba(66, 184, 131, 0.05)',
+              borderColor: colors.primary 
             }]}>
               <Image
                 source={require('../../assets/images/Logo_ocelon.jpg')}
@@ -223,13 +270,19 @@ export default function HomeScreen() {
             </View>
 
             {/* Título */}
-            <Text style={[s.modalTitle, { fontSize: ms(22) }]}>
-              ¡Gracias por usar Ocelon!
+            <Text style={[s.modalTitle, { 
+              fontSize: ms(22),
+              color: colors.text 
+            }]}>
+              {t('thanksForUsing')}
             </Text>
 
             {/* Subtítulo */}
-            <Text style={[s.modalSubtitle, { fontSize: ms(14) }]}>
-              Esperamos verte pronto de nuevo. ¡Buen viaje!
+            <Text style={[s.modalSubtitle, { 
+              fontSize: ms(14),
+              color: colors.textSecondary 
+            }]}>
+              {t('seeYouSoon')}
             </Text>
 
             {/* Botones */}
@@ -239,11 +292,16 @@ export default function HomeScreen() {
                   borderRadius: hs(12), 
                   paddingVertical: vs(14),
                   flex: 1,
+                  backgroundColor: 'transparent',
+                  borderColor: colors.border 
                 }]}
                 onPress={handleCancelLogout}
                 activeOpacity={0.8}
               >
-                <Text style={[s.cancelButtonText, { fontSize: ms(15) }]}>Cancelar</Text>
+                <Text style={[s.cancelButtonText, { 
+                  fontSize: ms(15),
+                  color: colors.textSecondary 
+                }]}>{t('cancel')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -251,12 +309,15 @@ export default function HomeScreen() {
                   borderRadius: hs(12), 
                   paddingVertical: vs(14),
                   flex: 1,
+                  backgroundColor: colors.primary 
                 }]}
                 onPress={handleConfirmLogout}
                 activeOpacity={0.8}
               >
                 <Ionicons name="log-out-outline" size={ms(18)} color="#0b0b0c" />
-                <Text style={[s.confirmButtonText, { fontSize: ms(15) }]}>Salir</Text>
+                <Text style={[s.confirmButtonText, { 
+                  fontSize: ms(15) 
+                }]}>{t('exit')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -271,6 +332,7 @@ function FeatureCard({
   vs,
   ms,
   radius,
+  colors,
   icon,
   title,
   text,
@@ -279,6 +341,7 @@ function FeatureCard({
   vs: (n: number) => number;
   ms: (n: number, f?: number) => number;
   radius: number;
+  colors: any;
   icon: React.ReactNode;
   title: string;
   text: string;
@@ -286,14 +349,14 @@ function FeatureCard({
   return (
     <View
       style={{
-        backgroundColor: '#151518',
+        backgroundColor: colors.card,
         borderRadius: radius,
         paddingVertical: vs(14),
         paddingHorizontal: hs(14),
         width: '100%',
         maxWidth: 360,
         borderWidth: 1,
-        borderColor: '#202028',
+        borderColor: colors.border,
         shadowColor: '#000',
         shadowOpacity: 0.25,
         shadowRadius: 10,
@@ -307,29 +370,37 @@ function FeatureCard({
             width: hs(36),
             height: hs(36),
             borderRadius: hs(10),
-            backgroundColor: '#1b1b20',
+            backgroundColor: colors.secondary,
             alignItems: 'center',
             justifyContent: 'center',
             borderWidth: 1,
-            borderColor: '#2a2a30',
+            borderColor: colors.border,
           }}
         >
           {icon}
         </View>
-        <Text style={{ color: '#fff', fontWeight: '700', fontSize: ms(16) }}>{title}</Text>
+        <Text style={{ 
+          color: colors.text, 
+          fontWeight: '700', 
+          fontSize: ms(16) 
+        }}>{title}</Text>
       </View>
-      <Text style={{ color: '#a9a9b3', fontSize: ms(13), lineHeight: ms(18) }}>{text}</Text>
+      <Text style={{ 
+        color: colors.textSecondary, 
+        fontSize: ms(13), 
+        lineHeight: ms(18) 
+      }}>{text}</Text>
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0b0b0c' },
+  container: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  kicker: { color: '#9f9faf', letterSpacing: 0.5 },
-  title: { color: '#ffffff', fontWeight: '800' },
-  subtitle: { color: '#c9c9cf' },
-  footer: { color: '#85859a' },
+  kicker: { letterSpacing: 0.5 },
+  title: { fontWeight: '800' },
+  subtitle: { },
+  footer: { },
 
   // Logout Button
   logoutButton: {
@@ -337,50 +408,40 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 107, 107, 0.3)',
   },
   logoutButtonText: {
-    color: '#ff6b6b',
     fontWeight: '700',
   },
 
   // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#131318',
     padding: 24,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#42b883',
     width: '100%',
   },
   modalLogoContainer: {
-    backgroundColor: 'rgba(66, 184, 131, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
     borderWidth: 2,
-    borderColor: '#42b883',
   },
   modalLogo: {
     borderWidth: 0,
   },
   modalTitle: {
-    color: '#fff',
     fontWeight: '800',
     textAlign: 'center',
     marginBottom: 8,
   },
   modalSubtitle: {
-    color: '#9aa0a6',
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 22,
@@ -391,18 +452,14 @@ const s = StyleSheet.create({
     width: '100%',
   },
   cancelButton: {
-    backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#3a3a42',
     alignItems: 'center',
     justifyContent: 'center',
   },
   cancelButtonText: {
-    color: '#9aa0a6',
     fontWeight: '600',
   },
   confirmButton: {
-    backgroundColor: '#42b883',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

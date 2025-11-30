@@ -19,6 +19,7 @@ import { useAuthState } from '../hooks/useAuthState';
 import { RootStackParamList } from '../navegation/types/navigation';
 import { getTimer, onTimerChange, startTimer, stopTimer } from '../utils/TimerStore';
 import { initNotifications, sendNotification } from '../utils/notifications';
+import { useConfig } from '../contexts/ConfigContext'; // Importa el hook
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Timer'>;
 
@@ -43,9 +44,28 @@ export default function TimerScreen({ route, navigation }: Props) {
     // --- LÓGICA DE LA PLANTILLA (Responsiva) ---
     const { width, height } = useWindowDimensions();
     const insets = useSafeAreaInsets();
+    const { t, isDark } = useConfig(); // Usa el hook de configuración
     const hs = (size: number) => (width / BASE_W) * size;
     const vs = (size: number) => (height / BASE_H) * size;
     const ms = (size: number, factor = 0.5) => size + (hs(size) - size) * factor;
+
+    // Colores dinámicos según el tema
+    const colors = {
+        background: isDark ? '#0b0b0c' : '#f8f9fa',
+        card: isDark ? '#151518' : '#ffffff',
+        text: isDark ? '#ffffff' : '#000000',
+        textSecondary: isDark ? '#c9c9cf' : '#666666',
+        border: isDark ? '#202028' : '#e0e0e0',
+        primary: '#42b883',
+        secondary: isDark ? '#121215' : '#f1f3f4',
+        timerBackground: isDark ? '#121215' : '#f8f9fa',
+        timerBorder: isDark ? '#42b883' : '#42b883',
+        countdownColor: '#ffaa00',
+        error: '#ff6b6b',
+        conversion: isDark ? '#6C63FF' : '#3f51b5',
+        conversionBackground: isDark ? 'rgba(108, 99, 255, 0.1)' : 'rgba(63, 81, 181, 0.1)',
+        conversionBorder: isDark ? 'rgba(108, 99, 255, 0.3)' : 'rgba(63, 81, 181, 0.2)',
+    };
 
     // Tokens de Diseño adaptados
     const PADDING = hs(20);
@@ -79,13 +99,13 @@ export default function TimerScreen({ route, navigation }: Props) {
 
         const interval = setInterval(() => {
             sendNotification(
-                "Tiempo de Estacionamiento",
-                `Tiempo: ${formatTime(storeData.seconds)} - Costo: $${storeData.cost.toFixed(2)} USD`
+                t('parkingTime'),
+                `${t('time')}: ${formatTime(storeData.seconds)} - ${t('cost')}: $${storeData.cost.toFixed(2)} USD`
             );
         }, 30000);
 
         return () => clearInterval(interval);
-    }, [storeData.seconds, storeData.cost, storeData.active]);
+    }, [storeData.seconds, storeData.cost, storeData.active, t]);
 
     const [isPayModalVisible, setPayModalVisible] = useState(false);
     const { usuario, esInvitado } = useAuthState();
@@ -123,8 +143,8 @@ export default function TimerScreen({ route, navigation }: Props) {
         : formatTime(storeData.seconds);
 
     const mainLabel = storeData.phase === 'COUNTDOWN'
-        ? `Tiempo libre restante`
-        : 'Tiempo Transcurrido (HH:MM:SS)';
+        ? t('freeTimeRemaining')
+        : t('elapsedTime');
 
     // Extraer info del QR (spot, parking name, etc.)
     const qrInfo = React.useMemo(() => {
@@ -132,7 +152,7 @@ export default function TimerScreen({ route, navigation }: Props) {
             const url = new URL(rawQrData || '');
             return {
                 spot: url.searchParams.get('spot') || 'N/A',
-                parking: url.searchParams.get('parking') || 'Estacionamiento',
+                parking: url.searchParams.get('parking') || t('parking'),
                 nonce: url.searchParams.get('nonce') || '',
                 ts: url.searchParams.get('ts') || '',
                 from: url.searchParams.get('from') || '',
@@ -141,14 +161,14 @@ export default function TimerScreen({ route, navigation }: Props) {
         } catch {
             return {
                 spot: 'N/A',
-                parking: 'Estacionamiento',
+                parking: t('parking'),
                 nonce: '',
                 ts: '',
                 from: '',
                 scheme: 'openpayment'
             };
         }
-    }, [rawQrData]);
+    }, [rawQrData, t]);
 
     const handlePaymentPress = () => {
         if (usuario && !esInvitado) {
@@ -190,13 +210,14 @@ export default function TimerScreen({ route, navigation }: Props) {
     };
 
     return (
-        <View style={s.container}>
+        <View style={[s.container, { backgroundColor: colors.background }]}>
             {/* Logo de fondo transparente */}
             <Image
                 source={require('../../assets/images/Logo_ocelon.jpg')}
                 style={[s.backgroundLogo, {
                     width: width * 0.8,
                     height: width * 0.8,
+                    opacity: isDark ? 0.05 : 0.03,
                 }]}
                 resizeMode="contain"
             />
@@ -218,8 +239,8 @@ export default function TimerScreen({ route, navigation }: Props) {
                     <RefreshControl
                         refreshing={refreshing}
                         onRefresh={onRefresh}
-                        tintColor="#42b883"
-                        colors={['#42b883']}
+                        tintColor={colors.primary}
+                        colors={[colors.primary]}
                         progressViewOffset={insets.top} // Ajusta el indicador de refresh
                     />
                 }
@@ -229,22 +250,28 @@ export default function TimerScreen({ route, navigation }: Props) {
                     {/* Header */}
                     <View style={[s.header, { marginBottom: vs(24), paddingVertical: vs(8) }]}>
                         <TouchableOpacity
-                            style={s.backButton}
+                            style={[s.backButton, { 
+                                backgroundColor: isDark ? 'rgba(66, 184, 131, 0.15)' : 'rgba(66, 184, 131, 0.1)',
+                                borderColor: isDark ? 'rgba(66, 184, 131, 0.3)' : 'rgba(66, 184, 131, 0.2)',
+                            }]}
                             onPress={handleGoBack}
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                         >
-                            <Ionicons name="arrow-back" size={26} color="#42b883" />
+                            <Ionicons name="arrow-back" size={26} color={colors.primary} />
                         </TouchableOpacity>
-                        <Text style={[s.headerTitle, { fontSize: ms(18) }]}>
+                        <Text style={[s.headerTitle, { 
+                            fontSize: ms(18),
+                            color: colors.text 
+                        }]}>
                             {qrInfo.parking}
                         </Text>
                         <View style={s.headerPlaceholder} />
                     </View>
 
                     {/* Cajón info */}
-                    <View style={[s.spotBadge, { marginBottom: vs(16) }]}>
+                    <View style={[s.spotBadge, { marginBottom: vs(16), backgroundColor: colors.primary }]}>
                         <Ionicons name="car" size={ms(16)} color="#0b0b0c" />
-                        <Text style={s.spotText}>Cajón {qrInfo.spot}</Text>
+                        <Text style={s.spotText}>{t('spot')} {qrInfo.spot}</Text>
                     </View>
 
                     {/* Contenedor Principal del Tiempo (Círculo) */}
@@ -254,7 +281,8 @@ export default function TimerScreen({ route, navigation }: Props) {
                             height: LOGO_TIMER,
                             borderRadius: LOGO_TIMER / 2,
                             marginBottom: vs(16),
-                            borderColor: storeData.phase === 'COUNTDOWN' ? '#ffaa00' : '#42b883',
+                            backgroundColor: colors.timerBackground,
+                            borderColor: storeData.phase === 'COUNTDOWN' ? colors.countdownColor : colors.timerBorder,
                         }]}
                     >
                         <Text style={[
@@ -262,77 +290,109 @@ export default function TimerScreen({ route, navigation }: Props) {
                             {
                                 fontSize: storeData.phase === 'COUNTDOWN' ? ms(50) : ms(36),
                                 fontWeight: storeData.phase === 'COUNTDOWN' ? '800' : '600',
-                                color: storeData.phase === 'COUNTDOWN' ? '#ffaa00' : '#42b883',
+                                color: storeData.phase === 'COUNTDOWN' ? colors.countdownColor : colors.primary,
                             }
                         ]}>
                             {mainText}
                         </Text>
-                        <Text style={[s.timerLabel, { fontSize: ms(12) }]}>
+                        <Text style={[s.timerLabel, { 
+                            fontSize: ms(12),
+                            color: colors.textSecondary 
+                        }]}>
                             {mainLabel}
                         </Text>
                     </View>
 
                     {/* Contador de Costo - EN USD */}
-                    <View style={[s.costCard, { maxWidth: MAX_W, borderRadius: CARD_RADIUS, padding: hs(16) }]}>
+                    <View style={[s.costCard, { 
+                        maxWidth: MAX_W, 
+                        borderRadius: CARD_RADIUS, 
+                        padding: hs(16),
+                        backgroundColor: colors.card,
+                        borderColor: colors.border 
+                    }]}>
                         <View style={s.costHeader}>
-                            <View style={s.costIconContainer}>
-                                <Ionicons name="logo-usd" size={ms(24)} color="#42b883" />
+                            <View style={[s.costIconContainer, { 
+                                backgroundColor: isDark ? 'rgba(66, 184, 131, 0.15)' : 'rgba(66, 184, 131, 0.1)' 
+                            }]}>
+                                <Ionicons name="logo-usd" size={ms(24)} color={colors.primary} />
                             </View>
-                            <Text style={[s.costTitle, { fontSize: ms(16) }]}>
-                                Costo Total
+                            <Text style={[s.costTitle, { 
+                                fontSize: ms(16),
+                                color: colors.text 
+                            }]}>
+                                {t('totalCost')}
                             </Text>
                         </View>
 
-                        <Text style={[s.costAmount, { fontSize: ms(40) }]}>
+                        <Text style={[s.costAmount, { 
+                            fontSize: ms(40),
+                            color: colors.primary 
+                        }]}>
                             {formatUSD(storeData.cost)}
                         </Text>
 
                         <View style={s.rateInfo}>
-                            <Ionicons name="time-outline" size={ms(14)} color="#9f9faf" />
-                            <Text style={[s.costSubtitle, { fontSize: ms(12) }]}>
-                                ${RATE_USD_PER_INTERVAL.toFixed(2)} USD cada {INTERVAL_SECONDS} segundos
+                            <Ionicons name="time-outline" size={ms(14)} color={colors.textSecondary} />
+                            <Text style={[s.costSubtitle, { 
+                                fontSize: ms(12),
+                                color: colors.textSecondary 
+                            }]}>
+                                ${RATE_USD_PER_INTERVAL.toFixed(2)} USD {t('every')} {INTERVAL_SECONDS} {t('seconds')}
                             </Text>
                         </View>
 
                         {/* Indicador de conversión */}
-                        <View style={s.conversionBanner}>
-                            <Ionicons name="swap-horizontal" size={ms(16)} color="#6C63FF" />
-                            <Text style={s.conversionText}>
-                                Se convertirá a MXN al pagar
+                        <View style={[s.conversionBanner, { 
+                            backgroundColor: colors.conversionBackground,
+                            borderColor: colors.conversionBorder 
+                        }]}>
+                            <Ionicons name="swap-horizontal" size={ms(16)} color={colors.conversion} />
+                            <Text style={[s.conversionText, { color: colors.conversion }]}>
+                                {t('willConvertToMXN')}
                             </Text>
                         </View>
                     </View>
 
                     {/* Información del QR */}
-                    <View style={[s.qrCard, { maxWidth: MAX_W, borderRadius: CARD_RADIUS, padding: hs(14) }]}>
-                        <Text style={[s.qrTitle, { fontSize: ms(14) }]}>
-                            Detalles de la Sesión
+                    <View style={[s.qrCard, { 
+                        maxWidth: MAX_W, 
+                        borderRadius: CARD_RADIUS, 
+                        padding: hs(14),
+                        backgroundColor: colors.card,
+                        borderColor: colors.border 
+                    }]}>
+                        <Text style={[s.qrTitle, { 
+                            fontSize: ms(14),
+                            color: colors.text 
+                        }]}>
+                            {t('sessionDetails')}
                         </Text>
 
                         <View style={s.qrRow}>
-                            <Ionicons name="finger-print-outline" size={ms(14)} color="#9aa0a6" />
-                            <Text style={s.qrLabel}>ID Sesión:</Text>
-                            <Text style={s.qrValue} numberOfLines={1}>
+                            <Ionicons name="finger-print-outline" size={ms(14)} color={colors.textSecondary} />
+                            <Text style={[s.qrLabel, { color: colors.textSecondary }]}>{t('sessionId')}:</Text>
+                            <Text style={[s.qrValue, { color: colors.text }]} numberOfLines={1}>
                                 {qrInfo.nonce.slice(0, 12)}...
                             </Text>
                         </View>
 
                         <View style={s.qrRow}>
-                            <Ionicons name="location-outline" size={ms(14)} color="#9aa0a6" />
-                            <Text style={s.qrLabel}>Cajón:</Text>
-                            <Text style={s.qrValue}>{qrInfo.spot}</Text>
+                            <Ionicons name="location-outline" size={ms(14)} color={colors.textSecondary} />
+                            <Text style={[s.qrLabel, { color: colors.textSecondary }]}>{t('spot')}:</Text>
+                            <Text style={[s.qrValue, { color: colors.text }]}>{qrInfo.spot}</Text>
                         </View>
 
                         <View style={s.qrRow}>
-                            <Ionicons name="business-outline" size={ms(14)} color="#9aa0a6" />
-                            <Text style={s.qrLabel}>Estacionamiento:</Text>
-                            <Text style={s.qrValue}>{qrInfo.parking}</Text>
+                            <Ionicons name="business-outline" size={ms(14)} color={colors.textSecondary} />
+                            <Text style={[s.qrLabel, { color: colors.textSecondary }]}>{t('parking')}:</Text>
+                            <Text style={[s.qrValue, { color: colors.text }]}>{qrInfo.parking}</Text>
                         </View>
 
                         <View style={s.qrRow}>
-                            <Ionicons name="time-outline" size={ms(14)} color="#9aa0a6" />
-                            <Text style={s.qrLabel}>Tiempo transcurrido:</Text>
-                            <Text style={s.qrValue}>{formatTime(storeData.seconds)}</Text>
+                            <Ionicons name="time-outline" size={ms(14)} color={colors.textSecondary} />
+                            <Text style={[s.qrLabel, { color: colors.textSecondary }]}>{t('elapsedTime')}:</Text>
+                            <Text style={[s.qrValue, { color: colors.text }]}>{formatTime(storeData.seconds)}</Text>
                         </View>
                     </View>
 
@@ -347,6 +407,7 @@ export default function TimerScreen({ route, navigation }: Props) {
                                 marginBottom: vs(12),
                                 width: '100%',
                                 maxWidth: MAX_W,
+                                backgroundColor: colors.primary
                             }
                         ]}
                         onPress={handlePaymentPress}
@@ -354,7 +415,7 @@ export default function TimerScreen({ route, navigation }: Props) {
                     >
                         <Ionicons name="card-outline" size={ms(20)} color="#0b0b0c" />
                         <Text style={[s.btnText, { fontSize: ms(16) }]}>
-                            Pagar {formatUSD(storeData.cost)}
+                            {t('pay')} {formatUSD(storeData.cost)}
                         </Text>
                     </TouchableOpacity>
 
@@ -367,6 +428,8 @@ export default function TimerScreen({ route, navigation }: Props) {
                                 paddingVertical: vs(12),
                                 width: '100%',
                                 maxWidth: MAX_W,
+                                backgroundColor: 'transparent',
+                                borderColor: colors.border 
                             }
                         ]}
                         onPress={() => {
@@ -374,9 +437,9 @@ export default function TimerScreen({ route, navigation }: Props) {
                             navigation.navigate("AppTabs");
                         }}
                     >
-                        <Ionicons name="stop-circle-outline" size={ms(18)} color="#ff6b6b" />
-                        <Text style={s.secondaryBtnText}>
-                            Cancelar (Debug)
+                        <Ionicons name="stop-circle-outline" size={ms(18)} color={colors.error} />
+                        <Text style={[s.secondaryBtnText, { color: colors.error }]}>
+                            {t('cancelDebug')}
                         </Text>
                     </TouchableOpacity>
 
@@ -390,8 +453,12 @@ export default function TimerScreen({ route, navigation }: Props) {
                     />
 
                     {/* Footer */}
-                    <Text style={[s.footer, { fontSize: ms(11), marginTop: vs(24) }]}>
-                        © {new Date().getFullYear()} Ocelon — Estacionamiento Inteligente
+                    <Text style={[s.footer, { 
+                        fontSize: ms(11), 
+                        marginTop: vs(24),
+                        color: colors.textSecondary 
+                    }]}>
+                        © {new Date().getFullYear()} Ocelon — {t('smartParking')}
                     </Text>
 
                     {/* Espaciado extra para asegurar scroll */}
@@ -405,7 +472,6 @@ export default function TimerScreen({ route, navigation }: Props) {
 const s = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#0b0b0c'
     },
     backgroundLogo: {
         position: 'absolute',
@@ -415,7 +481,6 @@ const s = StyleSheet.create({
             { translateX: -150 },  // Ajusta según el tamaño del logo
             { translateY: -150 }   // Ajusta según el tamaño del logo
         ],
-        opacity: 0.05,
         zIndex: 0,
     },
     header: {
@@ -429,14 +494,11 @@ const s = StyleSheet.create({
         width: 46,
         height: 46,
         borderRadius: 23,
-        backgroundColor: 'rgba(66, 184, 131, 0.15)',
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(66, 184, 131, 0.3)',
     },
     headerTitle: {
-        color: '#fff',
         fontWeight: '700',
         textAlign: 'center',
         flex: 1,
@@ -448,7 +510,6 @@ const s = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        backgroundColor: '#42b883',
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 20,
@@ -462,7 +523,6 @@ const s = StyleSheet.create({
     timerCircle: {
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#121215',
         borderWidth: 3,
         shadowColor: '#000',
         shadowOpacity: 0.35,
@@ -475,15 +535,11 @@ const s = StyleSheet.create({
         fontWeight: '700',
     },
     timerLabel: {
-        color: '#c9c9cf',
         marginTop: 8,
         textAlign: 'center',
     },
     costCard: {
         width: '100%',
-        backgroundColor: '#131318',
-        borderWidth: 1,
-        borderColor: '#202028',
         alignItems: 'center',
         zIndex: 1,
     },
@@ -497,16 +553,13 @@ const s = StyleSheet.create({
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: 'rgba(66, 184, 131, 0.15)',
         alignItems: 'center',
         justifyContent: 'center',
     },
     costTitle: {
-        color: '#fff',
         fontWeight: '600',
     },
     costAmount: {
-        color: '#42b883',
         fontWeight: '900',
         marginBottom: 8,
     },
@@ -516,36 +569,28 @@ const s = StyleSheet.create({
         gap: 6,
     },
     costSubtitle: {
-        color: '#9f9faf',
         textAlign: 'center',
     },
     conversionBanner: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        backgroundColor: 'rgba(108, 99, 255, 0.1)',
         paddingHorizontal: 12,
         paddingVertical: 8,
         borderRadius: 8,
         marginTop: 12,
         borderWidth: 1,
-        borderColor: 'rgba(108, 99, 255, 0.3)',
     },
     conversionText: {
-        color: '#6C63FF',
         fontSize: 12,
         fontWeight: '600',
     },
     qrCard: {
         width: '100%',
-        backgroundColor: '#151518',
-        borderWidth: 1,
-        borderColor: '#202028',
         marginTop: 12,
         zIndex: 1,
     },
     qrTitle: {
-        color: '#fff',
         fontWeight: '600',
         marginBottom: 12,
     },
@@ -556,17 +601,14 @@ const s = StyleSheet.create({
         paddingVertical: 6,
     },
     qrLabel: {
-        color: '#9aa0a6',
         fontSize: 12,
     },
     qrValue: {
-        color: '#fff',
         fontSize: 12,
         fontWeight: '600',
         marginLeft: 'auto',
     },
     primaryBtn: {
-        backgroundColor: '#42b883',
         paddingHorizontal: 30,
         alignItems: 'center',
         justifyContent: 'center',
@@ -579,22 +621,18 @@ const s = StyleSheet.create({
         fontWeight: '800'
     },
     secondaryBtn: {
-        backgroundColor: 'transparent',
-        borderWidth: 1,
-        borderColor: '#3a3a42',
         alignItems: 'center',
         justifyContent: 'center',
         flexDirection: 'row',
         gap: 8,
+        borderWidth: 1,
         zIndex: 1,
     },
     secondaryBtnText: {
-        color: '#ff6b6b',
         fontWeight: '600',
         fontSize: 14,
     },
     footer: {
-        color: '#85859a',
         textAlign: 'center',
         zIndex: 1,
     },

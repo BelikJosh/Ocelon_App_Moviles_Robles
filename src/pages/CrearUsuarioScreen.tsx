@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { useRegistro } from '../hooks/useRegistro';
 import { RootStackParamList } from '../navegation/types/navigation';
+import { useConfig } from '../contexts/ConfigContext'; // Importa el hook
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CrearUsuario'>;
 
@@ -26,6 +27,8 @@ const BASE_H = 812;
 
 const CrearUsuarioScreen = ({ navigation }: Props) => {
   const { width, height } = useWindowDimensions();
+  const { t, isDark } = useConfig(); // Usa el hook de configuración
+
   const hs = (size: number) => (width / BASE_W) * size;                    // horizontal scale
   const vs = (size: number) => (height / BASE_H) * size;                   // vertical scale
   const ms = (size: number, factor = 0.5) => size + (hs(size) - size) * factor; // moderate scale
@@ -40,36 +43,49 @@ const CrearUsuarioScreen = ({ navigation }: Props) => {
 
   const { loading, error, success, registrarUsuario, limpiarEstado } = useRegistro();
 
+  // Colores dinámicos según el tema
+  const colors = {
+    background: isDark ? '#0b0b0c' : '#f8f9fa',
+    card: isDark ? '#151518' : '#ffffff',
+    text: isDark ? '#ffffff' : '#000000',
+    textSecondary: isDark ? '#c9c9cf' : '#666666',
+    inputBackground: isDark ? '#1b1b20' : '#f1f3f4',
+    inputBorder: isDark ? '#2a2a30' : '#e0e0e0',
+    placeholder: isDark ? '#8b8b95' : '#999999',
+    primary: '#42b883',
+    secondary: '#6C63FF',
+  };
+
   useEffect(() => {
     if (error) {
-      Alert.alert('Error', error);
+      Alert.alert(t('error'), error);
       limpiarEstado();
     }
-  }, [error, limpiarEstado]);
+  }, [error, limpiarEstado, t]);
 
   useEffect(() => {
     if (success) {
-      Alert.alert('Éxito', 'Cuenta creada correctamente en DynamoDB', [
+      Alert.alert(t('success'), t('accountCreated'), [
         { text: 'OK', onPress: () => navigation.navigate('Login') }
       ]);
     }
-  }, [success, navigation]);
+  }, [success, navigation, t]);
 
   const handleRegister = async () => {
     if (!nombre || !email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+      Alert.alert(t('error'), t('completeAllFields'));
       return;
     }
 
     // Validación simple de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      Alert.alert('Error', 'Por favor ingresa un email válido');
+      Alert.alert(t('error'), t('validEmail'));
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas no coinciden');
+      Alert.alert(t('error'), t('passwordsDontMatch'));
       return;
     }
 
@@ -94,12 +110,12 @@ const CrearUsuarioScreen = ({ navigation }: Props) => {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#0b0b0c' }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
-        <View style={[styles.container, { padding: PADDING }]}>
-          {/* Logo superior (tal como pediste) */}
+        <View style={[styles.container, { padding: PADDING, backgroundColor: colors.background }]}>
+          {/* Logo superior */}
           <Image
             source={require('../../assets/images/Logo_ocelon.jpg')}
             style={{
@@ -110,16 +126,24 @@ const CrearUsuarioScreen = ({ navigation }: Props) => {
               marginTop: vs(28),
               resizeMode: 'cover',
               borderWidth: Math.max(1, hs(3)),
-              borderColor: '#42b883'
+              borderColor: colors.primary
             }}
           />
 
           {/* Título */}
-          <Text style={[styles.title, { fontSize: ms(26), marginBottom: vs(12) }]}>
-            Crear Cuenta
+          <Text style={[styles.title, { 
+            fontSize: ms(26), 
+            marginBottom: vs(12),
+            color: colors.text 
+          }]}>
+            {t('createAccount')}
           </Text>
-          <Text style={[styles.subtitle, { fontSize: ms(14), marginBottom: vs(16) }]}>
-            Regístrate para empezar a usar Ocelon
+          <Text style={[styles.subtitle, { 
+            fontSize: ms(14), 
+            marginBottom: vs(16),
+            color: colors.textSecondary 
+          }]}>
+            {t('registerToStart')}
           </Text>
 
           {/* Card de formulario */}
@@ -131,12 +155,16 @@ const CrearUsuarioScreen = ({ navigation }: Props) => {
                 padding: hs(16),
                 paddingBottom: hs(18),
                 maxWidth: 520,
-                width: '100%'
+                width: '100%',
+                backgroundColor: colors.card,
               }
             ]}
           >
             {/* Nombre */}
-            <Text style={[styles.label, { fontSize: ms(13) }]}>Nombre completo</Text>
+            <Text style={[styles.label, { 
+              fontSize: ms(13),
+              color: colors.textSecondary 
+            }]}>{t('fullName')}</Text>
             <TextInput
               style={[
                 styles.input,
@@ -144,18 +172,24 @@ const CrearUsuarioScreen = ({ navigation }: Props) => {
                   padding: INPUT_PADDING,
                   borderRadius: INPUT_RADIUS,
                   fontSize: ms(16),
-                  marginBottom: vs(12)
+                  marginBottom: vs(12),
+                  backgroundColor: colors.inputBackground,
+                  color: colors.text,
+                  borderColor: colors.inputBorder,
                 }
               ]}
-              placeholder="Nombre completo"
-              placeholderTextColor="#8b8b95"
+              placeholder={t('fullNamePlaceholder')}
+              placeholderTextColor={colors.placeholder}
               value={nombre}
               onChangeText={setNombre}
               editable={!loading}
             />
 
             {/* Email */}
-            <Text style={[styles.label, { fontSize: ms(13) }]}>Correo electrónico</Text>
+            <Text style={[styles.label, { 
+              fontSize: ms(13),
+              color: colors.textSecondary 
+            }]}>{t('email')}</Text>
             <TextInput
               style={[
                 styles.input,
@@ -163,11 +197,14 @@ const CrearUsuarioScreen = ({ navigation }: Props) => {
                   padding: INPUT_PADDING,
                   borderRadius: INPUT_RADIUS,
                   fontSize: ms(16),
-                  marginBottom: vs(12)
+                  marginBottom: vs(12),
+                  backgroundColor: colors.inputBackground,
+                  color: colors.text,
+                  borderColor: colors.inputBorder,
                 }
               ]}
-              placeholder="correo@ejemplo.com"
-              placeholderTextColor="#8b8b95"
+              placeholder={t('emailPlaceholder')}
+              placeholderTextColor={colors.placeholder}
               keyboardType="email-address"
               autoCapitalize="none"
               value={email}
@@ -176,7 +213,10 @@ const CrearUsuarioScreen = ({ navigation }: Props) => {
             />
 
             {/* Teléfono */}
-            <Text style={[styles.label, { fontSize: ms(13) }]}>Teléfono (opcional)</Text>
+            <Text style={[styles.label, { 
+              fontSize: ms(13),
+              color: colors.textSecondary 
+            }]}>{t('phoneOptional')}</Text>
             <TextInput
               style={[
                 styles.input,
@@ -184,11 +224,14 @@ const CrearUsuarioScreen = ({ navigation }: Props) => {
                   padding: INPUT_PADDING,
                   borderRadius: INPUT_RADIUS,
                   fontSize: ms(16),
-                  marginBottom: vs(12)
+                  marginBottom: vs(12),
+                  backgroundColor: colors.inputBackground,
+                  color: colors.text,
+                  borderColor: colors.inputBorder,
                 }
               ]}
-              placeholder="10 dígitos"
-              placeholderTextColor="#8b8b95"
+              placeholder={t('phonePlaceholder')}
+              placeholderTextColor={colors.placeholder}
               keyboardType="phone-pad"
               value={telefono}
               onChangeText={setTelefono}
@@ -197,7 +240,10 @@ const CrearUsuarioScreen = ({ navigation }: Props) => {
             />
 
             {/* Contraseña */}
-            <Text style={[styles.label, { fontSize: ms(13) }]}>Contraseña</Text>
+            <Text style={[styles.label, { 
+              fontSize: ms(13),
+              color: colors.textSecondary 
+            }]}>{t('password')}</Text>
             <View style={{ position: 'relative', marginBottom: vs(12) }}>
               <TextInput
                 style={[
@@ -206,11 +252,14 @@ const CrearUsuarioScreen = ({ navigation }: Props) => {
                     padding: INPUT_PADDING,
                     borderRadius: INPUT_RADIUS,
                     fontSize: ms(16),
-                    paddingRight: hs(44)
+                    paddingRight: hs(44),
+                    backgroundColor: colors.inputBackground,
+                    color: colors.text,
+                    borderColor: colors.inputBorder,
                   }
                 ]}
-                placeholder="Mínimo 6 caracteres"
-                placeholderTextColor="#8b8b95"
+                placeholder={t('passwordPlaceholder')}
+                placeholderTextColor={colors.placeholder}
                 secureTextEntry={!showPass}
                 autoCapitalize="none"
                 value={password}
@@ -222,12 +271,15 @@ const CrearUsuarioScreen = ({ navigation }: Props) => {
                 style={[styles.eyeBtn, { right: hs(12), top: vs(12) }]}
                 disabled={loading}
               >
-                <Ionicons name={showPass ? 'eye-off' : 'eye'} size={ICON_SIZE} color="#9aa0a6" />
+                <Ionicons name={showPass ? 'eye-off' : 'eye'} size={ICON_SIZE} color={colors.placeholder} />
               </TouchableOpacity>
             </View>
 
             {/* Confirmar contraseña */}
-            <Text style={[styles.label, { fontSize: ms(13) }]}>Confirmar contraseña</Text>
+            <Text style={[styles.label, { 
+              fontSize: ms(13),
+              color: colors.textSecondary 
+            }]}>{t('confirmPassword')}</Text>
             <View style={{ position: 'relative' }}>
               <TextInput
                 style={[
@@ -236,11 +288,14 @@ const CrearUsuarioScreen = ({ navigation }: Props) => {
                     padding: INPUT_PADDING,
                     borderRadius: INPUT_RADIUS,
                     fontSize: ms(16),
-                    paddingRight: hs(44)
+                    paddingRight: hs(44),
+                    backgroundColor: colors.inputBackground,
+                    color: colors.text,
+                    borderColor: colors.inputBorder,
                   }
                 ]}
-                placeholder="Repite tu contraseña"
-                placeholderTextColor="#8b8b95"
+                placeholder={t('confirmPasswordPlaceholder')}
+                placeholderTextColor={colors.placeholder}
                 secureTextEntry={!showConfirm}
                 autoCapitalize="none"
                 value={confirmPassword}
@@ -252,7 +307,7 @@ const CrearUsuarioScreen = ({ navigation }: Props) => {
                 style={[styles.eyeBtn, { right: hs(12), top: vs(12) }]}
                 disabled={loading}
               >
-                <Ionicons name={showConfirm ? 'eye-off' : 'eye'} size={ICON_SIZE} color="#9aa0a6" />
+                <Ionicons name={showConfirm ? 'eye-off' : 'eye'} size={ICON_SIZE} color={colors.placeholder} />
               </TouchableOpacity>
             </View>
 
@@ -261,7 +316,12 @@ const CrearUsuarioScreen = ({ navigation }: Props) => {
               style={[
                 styles.primaryBtn,
                 loading && { opacity: 0.6 },
-                { paddingVertical: vs(13), borderRadius: INPUT_RADIUS, marginTop: vs(16) }
+                { 
+                  paddingVertical: vs(13), 
+                  borderRadius: INPUT_RADIUS, 
+                  marginTop: vs(16),
+                  backgroundColor: colors.primary 
+                }
               ]}
               onPress={handleRegister}
               disabled={loading}
@@ -269,13 +329,16 @@ const CrearUsuarioScreen = ({ navigation }: Props) => {
               {loading ? (
                 <ActivityIndicator color="#0b0b0c" />
               ) : (
-                <Text style={[styles.primaryText, { fontSize: ms(16) }]}>Crear Cuenta</Text>
+                <Text style={[styles.primaryText, { fontSize: ms(16) }]}>{t('createAccount')}</Text>
               )}
             </TouchableOpacity>
 
             {/* Volver */}
             <TouchableOpacity onPress={() => navigation.goBack()} disabled={loading} style={{ marginTop: vs(12) }}>
-              <Text style={[styles.backText, { fontSize: ms(14) }]}>Volver al login</Text>
+              <Text style={[styles.backText, { 
+                fontSize: ms(14),
+                color: colors.secondary 
+              }]}>{t('backToLogin')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -290,14 +353,11 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   title: {
-    color: '#ffffff',
     fontWeight: '800'
   },
   subtitle: {
-    color: '#c9c9cf'
   },
   card: {
-    backgroundColor: '#151518',
     // sombra iOS
     shadowColor: '#000',
     shadowOpacity: 0.25,
@@ -307,15 +367,11 @@ const styles = StyleSheet.create({
     elevation: 8
   },
   label: {
-    color: '#a0a0a8',
     marginBottom: 6
   },
   input: {
     width: '100%',
-    backgroundColor: '#1b1b20',
-    color: '#fff',
     borderWidth: 1,
-    borderColor: '#2a2a30'
   },
   eyeBtn: {
     position: 'absolute',
@@ -325,7 +381,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   primaryBtn: {
-    backgroundColor: '#42b883',
     alignItems: 'center',
     justifyContent: 'center'
   },
@@ -334,7 +389,6 @@ const styles = StyleSheet.create({
     fontWeight: '800'
   },
   backText: {
-    color: '#6C63FF',
     fontWeight: '600',
     textAlign: 'center'
   }

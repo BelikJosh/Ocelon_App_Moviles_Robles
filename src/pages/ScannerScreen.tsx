@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { RootStackParamList } from '../navegation/types/navigation';
 import { startTimer } from '../utils/TimerStore';
+import { useConfig } from '../contexts/ConfigContext'; // Importa el hook
 
 type ScannerScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Timer'>;
 
@@ -19,6 +20,19 @@ export default function ScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const navigation = useNavigation<ScannerScreenNavigationProp>();
+  const { t, isDark } = useConfig(); // Usa el hook de configuración
+
+  // Colores dinámicos según el tema
+  const colors = {
+    background: isDark ? '#000000' : '#000000', // Scanner siempre en fondo negro
+    overlay: isDark ? 'rgba(0,0,0,0.8)' : 'rgba(0,0,0,0.8)',
+    card: isDark ? '#1a1a1a' : '#2a2a2a',
+    text: '#ffffff',
+    textSecondary: isDark ? '#b0b0b0' : '#cccccc',
+    primary: '#42b883',
+    buttonBackground: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.5)',
+    permissionBackground: isDark ? '#0b0b0c' : '#1a1a1a',
+  };
 
   const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
     setScanned(true);
@@ -41,10 +55,10 @@ export default function ScannerScreen() {
 
   if (!permission) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.permissionBackground }]}>
         <View style={styles.loadingContainer}>
-          <Ionicons name="camera-outline" size={50} color="#42b883" />
-          <Text style={styles.loadingText}>Cargando permisos...</Text>
+          <Ionicons name="camera-outline" size={50} color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.text }]}>{t('loadingPermissions')}</Text>
         </View>
       </View>
     );
@@ -52,18 +66,18 @@ export default function ScannerScreen() {
 
   if (!permission.granted) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.permissionBackground }]}>
         <View style={styles.permissionContainer}>
           <Ionicons name="camera-off-outline" size={50} color="#ff6b6b" />
-          <Text style={styles.permissionText}>Sin acceso a la cámara</Text>
-          <Text style={styles.permissionSubtext}>
-            Necesitamos acceso a la cámara para escanear códigos QR
+          <Text style={[styles.permissionText, { color: colors.text }]}>{t('noCameraAccess')}</Text>
+          <Text style={[styles.permissionSubtext, { color: colors.textSecondary }]}>
+            {t('cameraAccessRequired')}
           </Text>
           <TouchableOpacity
-            style={styles.permissionButton}
+            style={[styles.permissionButton, { backgroundColor: colors.primary }]}
             onPress={requestPermission}
           >
-            <Text style={styles.permissionButtonText}>Permitir cámara</Text>
+            <Text style={styles.permissionButtonText}>{t('allowCamera')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -71,7 +85,7 @@ export default function ScannerScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <CameraView
         style={StyleSheet.absoluteFillObject}
         facing="back"
@@ -83,24 +97,26 @@ export default function ScannerScreen() {
 
       {/* Header con botón de cerrar */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.closeButton} onPress={handleManualClose}>
-          <Ionicons name="close" size={28} color="#fff" />
+        <TouchableOpacity style={[styles.closeButton, { backgroundColor: colors.buttonBackground }]} onPress={handleManualClose}>
+          <Ionicons name="close" size={28} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Escanear QR</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{t('scanQR')}</Text>
         <View style={styles.headerPlaceholder} />
       </View>
 
       {scanned && (
-        <View style={styles.overlay}>
-          <View style={styles.scanResult}>
-            <Ionicons name="checkmark-circle" size={40} color="#42b883" />
-            <Text style={styles.scanResultText}>¡QR Escaneado!</Text>
-            <Text style={styles.scanResultSubtext}>Redirigiendo al temporizador...</Text>
+        <View style={[styles.overlay, { backgroundColor: colors.overlay }]}>
+          <View style={[styles.scanResult, { backgroundColor: colors.card }]}>
+            <Ionicons name="checkmark-circle" size={40} color={colors.primary} />
+            <Text style={[styles.scanResultText, { color: colors.text }]}>{t('qrScanned')}</Text>
+            <Text style={[styles.scanResultSubtext, { color: colors.textSecondary }]}>
+              {t('redirectingToTimer')}
+            </Text>
             <TouchableOpacity
-              style={styles.scanAgainButton}
+              style={[styles.scanAgainButton, { backgroundColor: colors.primary }]}
               onPress={() => setScanned(false)}
             >
-              <Text style={styles.scanAgainText}>Escanear otro QR</Text>
+              <Text style={styles.scanAgainText}>{t('scanAnotherQR')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -108,19 +124,19 @@ export default function ScannerScreen() {
 
       {/* Marco de escaneo visual */}
       <View style={styles.scanFrame}>
-        <View style={styles.cornerTopLeft} />
-        <View style={styles.cornerTopRight} />
-        <View style={styles.cornerBottomLeft} />
-        <View style={styles.cornerBottomRight} />
+        <View style={[styles.cornerTopLeft, { borderColor: colors.primary }]} />
+        <View style={[styles.cornerTopRight, { borderColor: colors.primary }]} />
+        <View style={[styles.cornerBottomLeft, { borderColor: colors.primary }]} />
+        <View style={[styles.cornerBottomRight, { borderColor: colors.primary }]} />
       </View>
 
       {/* Instrucciones */}
       <View style={styles.instructionContainer}>
-        <Text style={styles.instruction}>
-          Encuadra el código QR dentro del marco
+        <Text style={[styles.instruction, { color: colors.text }]}>
+          {t('frameQRCode')}
         </Text>
-        <Text style={styles.instructionSubtext}>
-          El escaneo es automático
+        <Text style={[styles.instructionSubtext, { color: colors.textSecondary }]}>
+          {t('scanningAutomatic')}
         </Text>
       </View>
     </View>
@@ -132,7 +148,6 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'column',
     justifyContent: 'center',
-    backgroundColor: '#000',
   },
   header: {
     position: 'absolute',
@@ -149,12 +164,10 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
-    color: '#fff',
     fontSize: 18,
     fontWeight: '600',
   },
@@ -163,33 +176,28 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.8)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 5,
   },
   scanResult: {
-    backgroundColor: '#1a1a1a',
     padding: 24,
     borderRadius: 16,
     alignItems: 'center',
     marginHorizontal: 20,
   },
   scanResultText: {
-    color: '#fff',
     fontSize: 20,
     fontWeight: '600',
     marginTop: 12,
     marginBottom: 4,
   },
   scanResultSubtext: {
-    color: '#b0b0b0',
     fontSize: 14,
     marginBottom: 20,
     textAlign: 'center',
   },
   scanAgainButton: {
-    backgroundColor: '#42b883',
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 8,
@@ -216,7 +224,6 @@ const styles = StyleSheet.create({
     height: 40,
     borderLeftWidth: 4,
     borderTopWidth: 4,
-    borderColor: '#42b883',
   },
   cornerTopRight: {
     position: 'absolute',
@@ -226,7 +233,6 @@ const styles = StyleSheet.create({
     height: 40,
     borderRightWidth: 4,
     borderTopWidth: 4,
-    borderColor: '#42b883',
   },
   cornerBottomLeft: {
     position: 'absolute',
@@ -236,7 +242,6 @@ const styles = StyleSheet.create({
     height: 40,
     borderLeftWidth: 4,
     borderBottomWidth: 4,
-    borderColor: '#42b883',
   },
   cornerBottomRight: {
     position: 'absolute',
@@ -246,7 +251,6 @@ const styles = StyleSheet.create({
     height: 40,
     borderRightWidth: 4,
     borderBottomWidth: 4,
-    borderColor: '#42b883',
   },
   instructionContainer: {
     position: 'absolute',
@@ -257,14 +261,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   instruction: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '500',
     textAlign: 'center',
     marginBottom: 4,
   },
   instructionSubtext: {
-    color: '#b0b0b0',
     fontSize: 14,
     textAlign: 'center',
   },
@@ -272,10 +274,8 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0b0b0c',
   },
   loadingText: {
-    color: '#fff',
     fontSize: 16,
     marginTop: 16,
   },
@@ -283,25 +283,21 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0b0b0c',
     paddingHorizontal: 40,
   },
   permissionText: {
-    color: '#fff',
     fontSize: 20,
     fontWeight: '600',
     marginTop: 16,
     marginBottom: 8,
   },
   permissionSubtext: {
-    color: '#b0b0b0',
     fontSize: 14,
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 20,
   },
   permissionButton: {
-    backgroundColor: '#42b883',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,

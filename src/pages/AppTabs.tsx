@@ -5,8 +5,9 @@ import React, { useState } from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import TimerFloatingBar from '../components/TimerFloatingBar'; // ← AGREGAR ESTA IMPORTACIÓN
+import TimerFloatingBar from '../components/TimerFloatingBar';
 import { useAuthState } from '../hooks/useAuthState';
+import { useConfig } from '../contexts/ConfigContext'; // Importa el hook de configuración
 import ConfigScreen from './ConfigScreen';
 import HomeScreen from './HomeScreen';
 import MapScreen from './MapScreen';
@@ -31,31 +32,55 @@ function TopBar({
   onPressSupport,
 }: TopBarProps) {
   const insets = useSafeAreaInsets();
+  const { t, isDark } = useConfig(); // Usa el hook de configuración
+
+  // Colores dinámicos según el tema
+  const colors = {
+    background: isDark ? '#002618ff' : '#e8f5e8',
+    text: isDark ? '#42b883' : '#2e7d32',
+    textSecondary: isDark ? '#85e0b3' : '#4caf50',
+    button: isDark ? '#42b883' : '#2e7d32',
+    buttonText: isDark ? '#0b0b0c' : '#ffffff',
+    iconButton: isDark ? 'rgba(66, 184, 131, 0.1)' : 'rgba(46, 125, 50, 0.1)',
+  };
 
   return (
-    <View style={[styles.topBarContainer, { paddingTop: insets.top + 12 }]}>
+    <View style={[styles.topBarContainer, { 
+      paddingTop: insets.top + 12,
+      backgroundColor: colors.background 
+    }]}>
       <TouchableOpacity style={styles.profileSection} onPress={onPressProfile} activeOpacity={0.7}>
-        <View style={styles.avatarCircle}>
-          <Ionicons name="person" size={20} color="#0b0b0c" />
+        <View style={[styles.avatarCircle, { backgroundColor: colors.button }]}>
+          <Ionicons name="person" size={20} color={colors.buttonText} />
         </View>
         <View>
-          <Text style={styles.greeting}>Hola, {userName}</Text>
+          <Text style={[styles.greeting, { color: colors.text }]}>
+            {t('hello')}, {userName}
+          </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={styles.userStatus}>{userStatus}</Text>
-            <Ionicons name="chevron-forward" size={14} color="#42b883" />
+            <Text style={[styles.userStatus, { color: colors.textSecondary }]}>{userStatus}</Text>
+            <Ionicons name="chevron-forward" size={14} color={colors.text} />
           </View>
         </View>
       </TouchableOpacity>
 
       <View style={styles.rightSection}>
-        <TouchableOpacity style={styles.iconButton} onPress={onPressNotifications} activeOpacity={0.7}>
-          <Ionicons name="notifications-outline" size={24} color="#42b883" />
+        <TouchableOpacity 
+          style={[styles.iconButton, { backgroundColor: colors.iconButton }]} 
+          onPress={onPressNotifications} 
+          activeOpacity={0.7}
+        >
+          <Ionicons name="notifications-outline" size={24} color={colors.text} />
           <View style={styles.badge} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.iconButton, styles.supportButton]} onPress={onPressSupport} activeOpacity={0.7}>
-          <MaterialIcons name="headset-mic" size={20} color="#0b0b0c" />
-          <Text style={styles.supportText}>Soporte</Text>
+        <TouchableOpacity 
+          style={[styles.iconButton, styles.supportButton, { backgroundColor: colors.button }]} 
+          onPress={onPressSupport} 
+          activeOpacity={0.7}
+        >
+          <MaterialIcons name="headset-mic" size={20} color={colors.buttonText} />
+          <Text style={[styles.supportText, { color: colors.buttonText }]}>{t('support')}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -66,33 +91,47 @@ function TopBar({
 function ScreenWithTopBar({ Component, navigation }: { Component: any; navigation: any }) {
   const insets = useSafeAreaInsets();
   const [showSupport, setShowSupport] = useState(false);
+  const { t, isDark } = useConfig(); // Usa el hook de configuración
 
   const { usuario, esInvitado, loading } = useAuthState();
 
+  // Colores dinámicos según el tema
+  const colors = {
+    background: isDark ? '#0b0b0c' : '#f5f5f5',
+    text: isDark ? '#42b883' : '#2e7d32',
+    card: isDark ? '#121218' : '#ffffff',
+    border: isDark ? '#1e1e1e' : '#e0e0e0',
+  };
+
   const getUserName = () => {
-    if (loading) return 'Cargando...';
+    if (loading) return t('loading');
     if (usuario) return usuario.nombre;
-    return 'Invitado';
+    return t('guest');
   };
 
   const getUserStatus = () => {
-    if (loading) return 'Cargando...';
-    if (usuario) return 'Usuario Premium';
-    if (esInvitado) return 'Modo Invitado';
-    return 'No autenticado';
+    if (loading) return t('loading');
+    if (usuario) return t('premiumUser');
+    if (esInvitado) return t('guestMode');
+    return t('notAuthenticated');
   };
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0b0b0c', justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: '#42b883' }}>Cargando...</Text>
+      <View style={{ 
+        flex: 1, 
+        backgroundColor: colors.background, 
+        justifyContent: 'center', 
+        alignItems: 'center' 
+      }}>
+        <Text style={{ color: colors.text }}>{t('loading')}</Text>
       </View>
     );
   }
 
   return (
     <>
-      <View style={{ flex: 1, backgroundColor: '#0b0b0c' }}>
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
         <TopBar
           userName={getUserName()}
           userStatus={getUserStatus()}
@@ -104,7 +143,7 @@ function ScreenWithTopBar({ Component, navigation }: { Component: any; navigatio
           <Component />
         </View>
 
-        {/* ← AGREGAR TimerFloatingBar AQUÍ - Aparece en TODAS las pantallas */}
+        {/* TimerFloatingBar */}
         <TimerFloatingBar />
       </View>
 
@@ -115,14 +154,17 @@ function ScreenWithTopBar({ Component, navigation }: { Component: any; navigatio
         presentationStyle="pageSheet"
         onRequestClose={() => setShowSupport(false)}
       >
-        <View style={{ flex: 1, backgroundColor: '#0b0b0c' }}>
-          <View style={[styles.modalHeader, { paddingTop: insets.top - 20 }]}>
-            <Text style={styles.modalTitle}>Soporte</Text>
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+          <View style={[styles.modalHeader, { 
+            paddingTop: insets.top - 20,
+            backgroundColor: colors.background 
+          }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('support')}</Text>
             <TouchableOpacity
               onPress={() => setShowSupport(false)}
-              style={styles.closeButton}
+              style={[styles.closeButton, { backgroundColor: colors.card }]}
             >
-              <Ionicons name="close" size={28} color="#42b883" />
+              <Ionicons name="close" size={28} color={colors.text} />
             </TouchableOpacity>
           </View>
           <SupportScreen />
@@ -139,37 +181,68 @@ const Tab = createBottomTabNavigator();
 function ScannerTabButton(props: any) {
   const { onPress, accessibilityState } = props;
   const focused = accessibilityState?.selected;
+  const { isDark } = useConfig();
+
+  const colors = {
+    button: isDark ? '#42b883' : '#2e7d32',
+    buttonText: isDark ? '#0b0b0c' : '#ffffff',
+  };
 
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.95}
-      style={[styles.scannerButton, focused && { transform: [{ scale: 0.98 }] }]}
+      style={[
+        styles.scannerButton, 
+        { backgroundColor: colors.button },
+        focused && { transform: [{ scale: 0.98 }] }
+      ]}
       accessibilityRole="button"
       accessibilityLabel="Abrir escáner QR"
       accessibilityState={{ selected: !!focused }}
     >
-      <MaterialIcons name="qr-code-scanner" size={34} color="#0b0b0c" />
+      <MaterialIcons name="qr-code-scanner" size={34} color={colors.buttonText} />
     </TouchableOpacity>
   );
 }
 
 export default function AppTabs() {
+  const { t, isDark } = useConfig();
+
+  // Colores dinámicos para la tab bar
+  const colors = {
+    background: isDark ? '#121218' : '#ffffff',
+    active: isDark ? '#42b883' : '#2e7d32',
+    inactive: isDark ? '#174d34ff' : '#81c784',
+    tabBarBg: isDark ? '#121218' : '#f8f9fa',
+    shadow: isDark ? '#42b883' : '#2e7d32',
+  };
+
   return (
     <Tab.Navigator
       initialRouteName="Home"
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: true,
-        tabBarActiveTintColor: '#42b883',
-        tabBarInactiveTintColor: '#174d34ff',
+        tabBarActiveTintColor: colors.active,
+        tabBarInactiveTintColor: colors.inactive,
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
           marginBottom: 6
         },
-        tabBarStyle: styles.tabBar,
-        tabBarBackground: () => <View style={styles.tabBarBg} />,
+        tabBarStyle: [styles.tabBar, { 
+          backgroundColor: 'transparent' 
+        }],
+        tabBarBackground: () => (
+          <View style={[
+            styles.tabBarBg, 
+            { 
+              backgroundColor: colors.tabBarBg,
+              shadowColor: colors.shadow,
+            }
+          ]} />
+        ),
       }}
     >
       <Tab.Screen
@@ -178,7 +251,7 @@ export default function AppTabs() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color} />
           ),
-          tabBarLabel: 'Home'
+          tabBarLabel: t('home')
         }}
       >
         {(props) => <ScreenWithTopBar Component={HomeScreen} navigation={props.navigation} />}
@@ -190,7 +263,7 @@ export default function AppTabs() {
           tabBarIcon: ({ color, size }) => (
             <FontAwesome5 name="wallet" size={size} color={color} />
           ),
-          tabBarLabel: 'Wallet'
+          tabBarLabel: t('wallet')
         }}
       >
         {(props) => <ScreenWithTopBar Component={WalletStack} navigation={props.navigation} />}
@@ -211,7 +284,7 @@ export default function AppTabs() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="map" size={size} color={color} />
           ),
-          tabBarLabel: 'Map'
+          tabBarLabel: t('map')
         }}
       >
         {(props) => <ScreenWithTopBar Component={MapScreen} navigation={props.navigation} />}
@@ -223,7 +296,7 @@ export default function AppTabs() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="settings" size={size} color={color} />
           ),
-          tabBarLabel: 'Config'
+          tabBarLabel: t('settings')
         }}
       >
         {(props) => <ScreenWithTopBar Component={ConfigScreen} navigation={props.navigation} />}
@@ -240,7 +313,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingBottom: 12,
-    backgroundColor: '#002618ff',
     borderBottomWidth: 0,
   },
   profileSection: {
@@ -252,19 +324,16 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: '#42b883',
     justifyContent: 'center',
     alignItems: 'center'
   },
   greeting: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#42b883',
     marginBottom: 2
   },
   userStatus: {
     fontSize: 11,
-    color: '#85e0b3',
     fontWeight: '500',
     marginRight: 4
   },
@@ -279,7 +348,6 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(66, 184, 131, 0.1)'
   },
   badge: {
     position: 'absolute',
@@ -292,7 +360,6 @@ const styles = StyleSheet.create({
   },
   supportButton: {
     flexDirection: 'row',
-    backgroundColor: '#42b883',
     paddingHorizontal: 12,
     width: 'auto',
     gap: 6
@@ -300,7 +367,6 @@ const styles = StyleSheet.create({
   supportText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#0b0b0c'
   },
 
   // Tab Bar - Mejor distribución para 5 tabs
@@ -317,10 +383,8 @@ const styles = StyleSheet.create({
   },
   tabBarBg: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#121218',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    shadowColor: '#42b883',
     shadowOpacity: 0.18,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: -4 },
@@ -335,7 +399,6 @@ const styles = StyleSheet.create({
     width: 68,
     height: 68,
     borderRadius: 34,
-    backgroundColor: '#42b883',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -353,13 +416,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingBottom: 12,
-    backgroundColor: '#0b0b0c',
     borderBottomWidth: 0,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#fff',
   },
   closeButton: {
     width: 42,
@@ -367,6 +428,5 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(66, 184, 131, 0.1)',
   },
 });

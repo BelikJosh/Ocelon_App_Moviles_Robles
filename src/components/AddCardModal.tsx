@@ -1,3 +1,4 @@
+// components/AddCardModal.tsx
 import { FontAwesome, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -12,6 +13,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { useConfig } from '../contexts/ConfigContext';
 
 const { width } = Dimensions.get('window');
 
@@ -30,6 +32,8 @@ interface AddCardModalProps {
 }
 
 const AddCardModal: React.FC<AddCardModalProps> = ({ visible, onClose, onCardAdded }) => {
+  const { t, isDark } = useConfig();
+  
   const [cardData, setCardData] = useState<CardData>({
     cardNumber: '',
     cvv: '',
@@ -52,6 +56,21 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ visible, onClose, onCardAdd
   const expiryInputRef = useRef<TextInput>(null);
   const nameInputRef = useRef<TextInput>(null);
   const cardNumberInputRef = useRef<TextInput>(null);
+
+  // Colores dinámicos según el tema
+  const colors = {
+    background: isDark ? '#131318' : '#ffffff',
+    cardBackground: isDark ? '#1c1c22' : '#f8f9fa',
+    text: isDark ? '#ffffff' : '#000000',
+    textSecondary: isDark ? '#9aa0a6' : '#666666',
+    border: isDark ? '#2d2d35' : '#e0e0e0',
+    error: '#ff4444',
+    success: '#42b883',
+    overlay: isDark ? 'rgba(0,0,0,0.9)' : 'rgba(0,0,0,0.7)',
+    secureBadgeBg: isDark ? 'rgba(66, 184, 131, 0.1)' : 'rgba(66, 184, 131, 0.15)',
+    secureBadgeBorder: isDark ? 'rgba(66, 184, 131, 0.3)' : 'rgba(66, 184, 131, 0.4)',
+    closeBtnBg: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+  };
 
   // Efecto de entrada/salida del modal
   useEffect(() => {
@@ -143,7 +162,7 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ visible, onClose, onCardAdd
     if (brand === 'mastercard') return '#222';
     if (brand === 'bbva') return '#004481';
     if (brand === 'amex') return '#006fcf';
-    return '#34343f';
+    return isDark ? '#34343f' : '#4a5568';
   };
 
   const handleCardNumberChange = (text: string) => {
@@ -182,10 +201,10 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ visible, onClose, onCardAdd
 
   const validateForm = (): boolean => {
     const newErrors: Partial<CardData> = {};
-    if (cardData.cardNumber.replace(/\s/g, '').length < 15) newErrors.cardNumber = 'Número de tarjeta incompleto';
-    if (cardData.cvv.length < 3) newErrors.cvv = 'CVV inválido';
-    if (!cardData.expiryMonth || !cardData.expiryYear) newErrors.expiryMonth = 'Fecha de vencimiento requerida';
-    if (!cardData.cardholderName) newErrors.cardholderName = 'Nombre del titular requerido';
+    if (cardData.cardNumber.replace(/\s/g, '').length < 15) newErrors.cardNumber = t('cardNumberError');
+    if (cardData.cvv.length < 3) newErrors.cvv = t('cvvError');
+    if (!cardData.expiryMonth || !cardData.expiryYear) newErrors.expiryMonth = t('expiryError');
+    if (!cardData.cardholderName) newErrors.cardholderName = t('cardholderError');
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -195,7 +214,7 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ visible, onClose, onCardAdd
     
     onCardAdded({
       ...cardData,
-      brand: cardBrand || 'Genérica',
+      brand: cardBrand || t('genericCard'),
       last4: cardData.cardNumber.slice(-4).trim()
     });
     onClose();
@@ -215,7 +234,8 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ visible, onClose, onCardAdd
                 inputRange: [0, 1],
                 outputRange: [0.9, 1]
               })
-            }]
+            }],
+            borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
           }
         ]}
       >
@@ -226,7 +246,7 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ visible, onClose, onCardAdd
             {cardBrand === 'Mastercard' && <FontAwesome name="cc-mastercard" size={32} color="#fff" />}
             {cardBrand === 'Amex' && <FontAwesome name="cc-amex" size={32} color="#fff" />}
             {!['Visa', 'Mastercard', 'Amex'].includes(cardBrand) && (
-              <Text style={styles.cardBrandText}>{cardBrand || 'TARJETA'}</Text>
+              <Text style={styles.cardBrandText}>{cardBrand || t('card').toUpperCase()}</Text>
             )}
           </View>
         </View>
@@ -237,15 +257,15 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ visible, onClose, onCardAdd
 
         <View style={styles.cardBottomRow}>
           <View style={{ flex: 2 }}>
-            <Text style={styles.cardLabel}>TITULAR</Text>
+            <Text style={styles.cardLabel}>{t('cardholder').toUpperCase()}</Text>
             <Text style={styles.cardValue} numberOfLines={1}>
-              {cardData.cardholderName || 'NOMBRE APELLIDO'}
+              {cardData.cardholderName || t('cardholderPlaceholder')}
             </Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.cardLabel}>EXPIRA</Text>
+            <Text style={styles.cardLabel}>{t('expires').toUpperCase()}</Text>
             <Text style={styles.cardValue}>
-              {cardData.expiryMonth || 'MM'}/{cardData.expiryYear || 'AA'}
+              {cardData.expiryMonth || 'MM'}/{cardData.expiryYear || 'YY'}
             </Text>
           </View>
         </View>
@@ -264,19 +284,20 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ visible, onClose, onCardAdd
                 inputRange: [0, 1],
                 outputRange: [0.9, 1]
               })
-            }]
+            }],
+            borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
           }
         ]}
       >
         <View style={styles.magneticStrip} />
         <View style={styles.signatureRow}>
-          <View style={styles.signatureStrip} />
+          <View style={[styles.signatureStrip, { backgroundColor: isDark ? '#555' : '#ccc' }]} />
           <View style={styles.cvvBox}>
             <Text style={styles.cvvText}>{cardData.cvv || '•••'}</Text>
           </View>
         </View>
         <Text style={styles.backNote}>
-          Esta tarjeta es intransferible y para uso exclusivo del titular.
+          {t('cardDisclaimer')}
         </Text>
         <View style={styles.hologramContainer}>
           <MaterialCommunityIcons name="shield-check" size={24} color="rgba(255,255,255,0.3)" />
@@ -298,25 +319,43 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ visible, onClose, onCardAdd
       onRequestClose={onClose}
       presentationStyle="overFullScreen"
     >
-      <View style={styles.modalOverlay}>
-        <Animated.View style={[styles.modalContent, { transform: [{ translateY: modalTranslateY }] }]}>
+      <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
+        <Animated.View style={[
+          styles.modalContent, 
+          { 
+            transform: [{ translateY: modalTranslateY }],
+            backgroundColor: colors.background 
+          }
+        ]}>
           
           <View style={styles.header}>
-            <Text style={styles.title}>Agregar Tarjeta</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={24} color="#fff" />
+            <Text style={[styles.title, { color: colors.text }]}>
+              {t('addCard')}
+            </Text>
+            <TouchableOpacity onPress={onClose} style={[styles.closeBtn, { backgroundColor: colors.closeBtnBg }]}>
+              <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
 
           {renderVirtualCard()}
 
           <View style={styles.formContainer}>
-            <Text style={styles.label}>Número de tarjeta</Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>
+              {t('cardNumber')}
+            </Text>
             <TextInput
               ref={cardNumberInputRef}
-              style={[styles.input, errors.cardNumber && styles.inputError]}
-              placeholder="0000 0000 0000 0000"
-              placeholderTextColor="#666"
+              style={[
+                styles.input, 
+                { 
+                  backgroundColor: colors.cardBackground,
+                  color: colors.text,
+                  borderColor: colors.border
+                },
+                errors.cardNumber && [styles.inputError, { borderColor: colors.error }]
+              ]}
+              placeholder={t('cardNumberPlaceholder')}
+              placeholderTextColor={colors.textSecondary}
               keyboardType="number-pad"
               maxLength={19}
               value={cardData.cardNumber}
@@ -325,14 +364,24 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ visible, onClose, onCardAdd
               returnKeyType="next"
               onSubmitEditing={() => nameInputRef.current?.focus()}
             />
-            {errors.cardNumber && <Text style={styles.errorText}>{errors.cardNumber}</Text>}
+            {errors.cardNumber && <Text style={[styles.errorText, { color: colors.error }]}>{errors.cardNumber}</Text>}
 
-            <Text style={styles.label}>Nombre del titular</Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>
+              {t('cardholderName')}
+            </Text>
             <TextInput
               ref={nameInputRef}
-              style={[styles.input, errors.cardholderName && styles.inputError]}
-              placeholder="COMO APARECE EN LA TARJETA"
-              placeholderTextColor="#666"
+              style={[
+                styles.input, 
+                { 
+                  backgroundColor: colors.cardBackground,
+                  color: colors.text,
+                  borderColor: colors.border
+                },
+                errors.cardholderName && [styles.inputError, { borderColor: colors.error }]
+              ]}
+              placeholder={t('cardholderNamePlaceholder')}
+              placeholderTextColor={colors.textSecondary}
               autoCapitalize="characters"
               value={cardData.cardholderName}
               onChangeText={(t) => setCardData(p => ({ ...p, cardholderName: t.toUpperCase() }))}
@@ -340,16 +389,26 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ visible, onClose, onCardAdd
               returnKeyType="next"
               onSubmitEditing={() => expiryInputRef.current?.focus()}
             />
-            {errors.cardholderName && <Text style={styles.errorText}>{errors.cardholderName}</Text>}
+            {errors.cardholderName && <Text style={[styles.errorText, { color: colors.error }]}>{errors.cardholderName}</Text>}
 
             <View style={styles.row}>
               <View style={{ flex: 1, marginRight: 10 }}>
-                <Text style={styles.label}>Vencimiento (MM/AA)</Text>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  {t('expiryDate')}
+                </Text>
                 <TextInput
                   ref={expiryInputRef}
-                  style={[styles.input, errors.expiryMonth && styles.inputError]}
-                  placeholder="MM/AA"
-                  placeholderTextColor="#666"
+                  style={[
+                    styles.input, 
+                    { 
+                      backgroundColor: colors.cardBackground,
+                      color: colors.text,
+                      borderColor: colors.border
+                    },
+                    errors.expiryMonth && [styles.inputError, { borderColor: colors.error }]
+                  ]}
+                  placeholder={t('expiryPlaceholder')}
+                  placeholderTextColor={colors.textSecondary}
                   keyboardType="number-pad"
                   maxLength={5}
                   value={`${cardData.expiryMonth}${cardData.expiryYear ? '/' + cardData.expiryYear : ''}`}
@@ -358,16 +417,26 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ visible, onClose, onCardAdd
                   returnKeyType="next"
                   onSubmitEditing={() => cvvInputRef.current?.focus()}
                 />
-                {errors.expiryMonth && <Text style={styles.errorText}>{errors.expiryMonth}</Text>}
+                {errors.expiryMonth && <Text style={[styles.errorText, { color: colors.error }]}>{errors.expiryMonth}</Text>}
               </View>
               
               <View style={{ flex: 1 }}>
-                <Text style={styles.label}>CVV</Text>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  {t('cvv')}
+                </Text>
                 <TextInput
                   ref={cvvInputRef}
-                  style={[styles.input, errors.cvv && styles.inputError]}
-                  placeholder="123"
-                  placeholderTextColor="#666"
+                  style={[
+                    styles.input, 
+                    { 
+                      backgroundColor: colors.cardBackground,
+                      color: colors.text,
+                      borderColor: colors.border
+                    },
+                    errors.cvv && [styles.inputError, { borderColor: colors.error }]
+                  ]}
+                  placeholder={t('cvvPlaceholder')}
+                  placeholderTextColor={colors.textSecondary}
                   keyboardType="number-pad"
                   maxLength={4}
                   value={cardData.cvv}
@@ -377,17 +446,25 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ visible, onClose, onCardAdd
                   returnKeyType="done"
                   onSubmitEditing={handleAddCard}
                 />
-                {errors.cvv && <Text style={styles.errorText}>{errors.cvv}</Text>}
+                {errors.cvv && <Text style={[styles.errorText, { color: colors.error }]}>{errors.cvv}</Text>}
               </View>
             </View>
 
-            <View style={styles.secureBadge}>
-              <Ionicons name="lock-closed" size={16} color="#42b883" />
-              <Text style={styles.secureText}>Pagos seguros con encriptación SSL</Text>
+            <View style={[
+              styles.secureBadge, 
+              { 
+                backgroundColor: colors.secureBadgeBg,
+                borderColor: colors.secureBadgeBorder
+              }
+            ]}>
+              <Ionicons name="lock-closed" size={16} color={colors.success} />
+              <Text style={[styles.secureText, { color: colors.success }]}>
+                {t('securePayment')}
+              </Text>
             </View>
 
-            <TouchableOpacity style={styles.submitBtn} onPress={handleAddCard}>
-              <Text style={styles.submitBtnText}>Guardar Tarjeta</Text>
+            <TouchableOpacity style={[styles.submitBtn, { backgroundColor: colors.success }]} onPress={handleAddCard}>
+              <Text style={styles.submitBtnText}>{t('saveCard')}</Text>
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -399,11 +476,9 @@ const AddCardModal: React.FC<AddCardModalProps> = ({ visible, onClose, onCardAdd
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.9)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#131318',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     paddingHorizontal: 20,
@@ -417,13 +492,11 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
   },
   title: {
-    color: '#fff',
     fontSize: 20,
     fontWeight: '700',
   },
   closeBtn: {
     padding: 5,
-    backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 20,
   },
   
@@ -446,7 +519,6 @@ const styles = StyleSheet.create({
     shadowRadius: 15,
     elevation: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
   },
   cardBack: {
     // Estilos específicos del reverso
@@ -509,7 +581,6 @@ const styles = StyleSheet.create({
   signatureStrip: {
     flex: 1,
     height: 30,
-    backgroundColor: '#ccc',
     opacity: 0.8,
   },
   cvvBox: {
@@ -541,26 +612,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   label: {
-    color: '#9aa0a6',
     marginBottom: 8,
     marginTop: 12,
     fontSize: 14,
     fontWeight: '500',
   },
   input: {
-    backgroundColor: '#1c1c22',
-    color: '#fff',
     padding: 16,
     borderRadius: 12,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#2d2d35',
   },
   inputError: {
     borderColor: '#ff4444',
   },
   errorText: {
-    color: '#ff4444',
     fontSize: 12,
     marginTop: 4,
     marginLeft: 4,
@@ -576,17 +642,13 @@ const styles = StyleSheet.create({
     gap: 8,
     marginVertical: 20,
     padding: 12,
-    backgroundColor: 'rgba(66, 184, 131, 0.1)',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(66, 184, 131, 0.3)',
   },
   secureText: {
-    color: '#42b883',
     fontSize: 12,
   },
   submitBtn: {
-    backgroundColor: '#42b883',
     padding: 18,
     borderRadius: 16,
     alignItems: 'center',
