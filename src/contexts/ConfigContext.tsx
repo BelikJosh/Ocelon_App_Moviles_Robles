@@ -1,7 +1,7 @@
 // contexts/ConfigContext.tsx
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useColorScheme } from 'react-native';
 
 export type ThemeMode = 'light' | 'dark' | 'auto';
 export type Language = 'es' | 'en';
@@ -22,6 +22,44 @@ const ConfigContext = createContext<ConfigContextType | undefined>(undefined);
 // Textos en diferentes idiomas
 const translations = {
   es: {
+    // EditProfileScreen y ProfileScreen - AÑADIDAS
+    editProfile: 'Editar Perfil',
+    myProfile: 'Mi Perfil',
+    guestAccount: 'Cuenta Invitado',
+    registeredAccount: 'Cuenta Registrada',
+    noEmailSet: 'No hay correo configurado',
+    notSet: 'No configurado',
+    notAvailable: 'No disponible',
+    exitGuest: 'Salir como Invitado',
+    personalInfo: 'Información Personal',
+    accountInfo: 'Información de Cuenta',
+    accountType: 'Tipo de Cuenta',
+    memberSince: 'Miembro desde',
+    noUserData: 'No hay datos de usuario',
+    
+    // EditProfileScreen específicas
+    fullName: 'Nombre completo',
+    fullNamePlaceholder: 'Ingresa tu nombre completo',
+    emailPlaceholder: 'ejemplo@correo.com',
+    phone: 'Teléfono',
+    phoneOptional: 'Teléfono (opcional)',
+    phonePlaceholder: 'Ingresa tu teléfono',
+    newPassword: 'Nueva Contraseña',
+    newPasswordPlaceholder: 'Ingresa tu nueva contraseña',
+    confirmPassword: 'Confirmar Contraseña',
+    confirmPasswordPlaceholder: 'Confirma tu nueva contraseña',
+    saveChanges: 'Guardar Cambios',
+    completeRequiredFields: 'Completa los campos requeridos',
+    passwordMinLength: 'La contraseña debe tener al menos 6 caracteres',
+    profileUpdated: 'Perfil actualizado exitosamente',
+    errorUpdatingProfile: 'Error al actualizar el perfil',
+    confirmLogout: 'Confirmar Cierre de Sesión',
+    logoutConfirmationMessage: '¿Estás seguro de que quieres cerrar sesión?',
+    convertGuestMessage: '¿Deseas convertir tu cuenta invitado en una cuenta permanente?',
+    errorCreatingAccount: 'Error al crear la cuenta',
+    accountCreated: 'Cuenta creada exitosamente',
+    databaseError: 'Error en la base de datos: Campos duplicados. Contacta al administrador.',
+    logoutError: 'Error al cerrar sesión',
     // Login Screen
     welcome: 'Bienvenido a',
     email: 'Correo electrónico',
@@ -166,16 +204,6 @@ const translations = {
     getStarted: '¡Comenzar!',
 
     registerToStart: 'Regístrate para empezar a usar Ocelon',
-    fullName: 'Nombre completo',
-    fullNamePlaceholder: 'Nombre completo',
-    emailPlaceholder: 'correo@ejemplo.com',
-    phoneOptional: 'Teléfono (opcional)',
-    phonePlaceholder: '10 dígitos',
-    passwordPlaceholder: 'Mínimo 6 caracteres',
-    confirmPassword: 'Confirmar contraseña',
-    confirmPasswordPlaceholder: 'Repite tu contraseña',
-    backToLogin: 'Volver al login',
-    accountCreated: 'Cuenta creada correctamente en DynamoDB',
    
     passwordsDontMatch: 'Las contraseñas no coinciden',
        loadingPermissions: 'Cargando permisos...',
@@ -326,6 +354,34 @@ transactionId: 'ID de transacción',
 
   },
   en: {
+    // EditProfileScreen y ProfileScreen - AÑADIDAS
+    editProfile: 'Edit Profile',
+    myProfile: 'My Profile',
+    guestAccount: 'Guest Account',
+    registeredAccount: 'Registered Account',
+    noEmailSet: 'No email set',
+    notSet: 'Not set',
+    notAvailable: 'Not available',
+    exitGuest: 'Exit as Guest',
+    personalInfo: 'Personal Information',
+    accountInfo: 'Account Information',
+    accountType: 'Account Type',
+    memberSince: 'Member since',
+    noUserData: 'No user data',
+    // EditProfileScreen específicas
+    newPassword: 'New Password',
+    newPasswordPlaceholder: 'Enter your new password',
+    saveChanges: 'Save Changes',
+    completeRequiredFields: 'Complete required fields',
+    passwordMinLength: 'Password must be at least 6 characters',
+    profileUpdated: 'Profile updated successfully',
+    errorUpdatingProfile: 'Error updating profile',
+    confirmLogout: 'Confirm Logout',
+    logoutConfirmationMessage: 'Are you sure you want to logout?',
+    convertGuestMessage: 'Do you want to convert your guest account to a permanent account?',
+    errorCreatingAccount: 'Error creating account',
+    databaseError: 'Database error: Duplicate fields. Contact the administrator.',
+    logoutError: 'Error logging out',
     // Login Screen
     welcome: 'Welcome to',
     email: 'Email',

@@ -27,14 +27,20 @@ type Props = NativeStackScreenProps<RootStackParamList, 'EditProfile'>;
 const BASE_W = 375;
 const BASE_H = 812;
 
+// Definimos las escalas como funciones globales para que estén disponibles
+const createScalers = (width: number, height: number) => ({
+  hs: (size: number) => (width / BASE_W) * size,
+  vs: (size: number) => (height / BASE_H) * size,
+  ms: (size: number, factor = 0.5) => size + ((width / BASE_W) * size - size) * factor,
+});
+
 const EditProfileScreen = ({ navigation }: Props) => {
   const { width, height } = useWindowDimensions();
   const { t, isDark } = useConfig();
   const { usuario, esInvitado, refetch, logout, actualizarUsuarioLocal } = useAuthState();
 
-  const hs = (size: number) => (width / BASE_W) * size;
-  const vs = (size: number) => (height / BASE_H) * size;
-  const ms = (size: number, factor = 0.5) => size + (hs(size) - size) * factor;
+  // Crear las funciones de escala
+  const { hs, vs, ms } = createScalers(width, height);
 
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
@@ -44,6 +50,14 @@ const EditProfileScreen = ({ navigation }: Props) => {
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Tokens de diseño
+  const PADDING = hs(20);
+  const CARD_RADIUS = hs(18);
+  const INPUT_RADIUS = hs(10);
+  const INPUT_PADDING = hs(14);
+  const AVATAR_SIZE = Math.min(hs(100), 140);
+  const ICON_SIZE = ms(22);
 
   // Colores dinámicos según el tema
   const colors = {
@@ -176,7 +190,7 @@ const EditProfileScreen = ({ navigation }: Props) => {
       // Manejo específico del error de DynamoDB
       let errorMessage = t('errorUpdatingProfile');
       if (error.message.includes('Two document paths overlap')) {
-        errorMessage = 'Error en la base de datos: Campos duplicados. Contacta al administrador.';
+        errorMessage = t('databaseError');
       } else {
         errorMessage += ': ' + error.message;
       }
@@ -304,22 +318,23 @@ const EditProfileScreen = ({ navigation }: Props) => {
     );
   };
 
-  const PADDING = hs(20);
-  const CARD_RADIUS = hs(18);
-  const INPUT_RADIUS = hs(10);
-  const INPUT_PADDING = hs(14);
-  const ICON_SIZE = ms(22);
-
   if (!usuario && !esInvitado) {
     return (
       <View style={[styles.container, { 
         padding: PADDING, 
         backgroundColor: colors.background,
         justifyContent: 'center',
-        alignItems: 'center'
+        alignItems: 'center',
+        flex: 1
       }]}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={{ color: colors.text, marginTop: vs(16) }}>{t('loading')}</Text>
+        <Text style={{ 
+          color: colors.text, 
+          marginTop: vs(16),
+          fontSize: ms(16)
+        }}>
+          {t('loading')}
+        </Text>
       </View>
     );
   }
@@ -329,71 +344,96 @@ const EditProfileScreen = ({ navigation }: Props) => {
       style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
-        <View style={[styles.container, { padding: PADDING, backgroundColor: colors.background }]}>
+      <ScrollView 
+        contentContainerStyle={{ flexGrow: 1 }} 
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[styles.container, { 
+          padding: PADDING, 
+          backgroundColor: colors.background,
+          paddingTop: vs(20)
+        }]}>
           
-          {/* Header */}
-          <View style={[styles.header, { marginBottom: vs(24) }]}>
+          {/* Header - SIN logo */}
+          <View style={[styles.header, { marginBottom: vs(32) }]}>
             <TouchableOpacity 
-              style={styles.backButton}
+              style={[styles.backButton, {
+                padding: hs(8),
+                borderRadius: hs(8),
+                backgroundColor: colors.inputBackground
+              }]}
               onPress={() => navigation.goBack()}
             >
-              <Ionicons name="arrow-back" size={ms(24)} color={colors.primary} />
+              <Ionicons name="arrow-back" size={ms(22)} color={colors.primary} />
             </TouchableOpacity>
             <Text style={[styles.title, { 
-              fontSize: ms(26), 
-              marginBottom: vs(12),
+              fontSize: ms(28),
               color: colors.text 
             }]}>
               {t('editProfile')}
             </Text>
-            <View style={{ width: ms(24) }} />
+            <View style={{ width: hs(40) }} />
           </View>
 
-          {/* Info del usuario - MOSTRANDO DATOS ACTUALIZADOS */}
-          <View style={[styles.userInfo, { marginBottom: vs(24) }]}>
+          {/* Info del usuario */}
+          <View style={[styles.userInfo, { marginBottom: vs(40) }]}>
             <View style={[
               styles.userIcon,
               {
-                width: hs(80),
-                height: hs(80),
-                borderRadius: hs(40),
-                backgroundColor: colors.secondary,
+                width: AVATAR_SIZE,
+                height: AVATAR_SIZE,
+                borderRadius: AVATAR_SIZE / 2,
+                backgroundColor: colors.inputBackground,
+                borderWidth: Math.max(2, hs(3)),
                 borderColor: colors.primary,
-                borderWidth: 3,
+                shadowColor: '#000',
+                shadowOpacity: 0.3,
+                shadowRadius: 16,
+                shadowOffset: { width: 0, height: 8 },
+                elevation: 12,
+                marginBottom: vs(20),
               }
             ]}>
-              <Ionicons name="person" size={ms(36)} color={colors.primary} />
+              <Ionicons name="person" size={ms(48)} color={colors.primary} />
             </View>
-            <Text style={[styles.userName, { 
-              fontSize: ms(18),
-              color: colors.text,
-              marginTop: vs(12)
-            }]}>
-              {nombre || usuario?.nombre || t('guest')}
-            </Text>
-            <Text style={[styles.userEmail, { 
-              fontSize: ms(14),
-              color: colors.textSecondary 
-            }]}>
-              {email || usuario?.email || t('noEmailSet')}
-            </Text>
-            {esInvitado && (
-              <View style={[styles.guestBadge, { 
-                backgroundColor: colors.primary + '20',
-                paddingHorizontal: hs(12),
-                paddingVertical: vs(4),
-                borderRadius: hs(8),
-                marginTop: vs(8)
+            
+            <View style={{ alignItems: 'center' }}>
+              <Text style={[styles.userName, { 
+                fontSize: ms(24),
+                color: colors.text,
+                marginBottom: vs(4)
               }]}>
-                <Text style={[styles.guestText, { 
-                  fontSize: ms(12),
-                  color: colors.primary
+                {nombre || usuario?.nombre || t('guest')}
+              </Text>
+              
+              <Text style={[styles.userEmail, { 
+                fontSize: ms(14),
+                color: colors.textSecondary 
+              }]}>
+                {email || usuario?.email || t('noEmailSet')}
+              </Text>
+              
+              {esInvitado && (
+                <View style={[styles.guestBadge, { 
+                  backgroundColor: colors.primary + '20',
+                  paddingHorizontal: hs(16),
+                  paddingVertical: vs(6),
+                  borderRadius: hs(20),
+                  borderWidth: 1,
+                  borderColor: colors.primary + '40',
+                  marginTop: vs(12)
                 }]}>
-                  {t('guestAccount')}
-                </Text>
-              </View>
-            )}
+                  <Text style={[styles.guestText, { 
+                    fontSize: ms(12),
+                    color: colors.primary,
+                    fontWeight: '700'
+                  }]}>
+                    {t('guestAccount').toUpperCase()}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
 
           {/* Card de formulario */}
@@ -402,18 +442,26 @@ const EditProfileScreen = ({ navigation }: Props) => {
               styles.card,
               {
                 borderRadius: CARD_RADIUS,
-                padding: hs(16),
-                paddingBottom: hs(18),
+                padding: hs(24),
                 maxWidth: 520,
                 width: '100%',
                 backgroundColor: colors.card,
+                borderWidth: 1,
+                borderColor: colors.border,
+                shadowColor: '#000',
+                shadowOpacity: 0.25,
+                shadowRadius: 12,
+                shadowOffset: { width: 0, height: 6 },
+                elevation: 8,
+                alignSelf: 'center',
               }
             ]}
           >
             {/* Nombre */}
             <Text style={[styles.label, { 
               fontSize: ms(13),
-              color: colors.textSecondary 
+              color: colors.textSecondary,
+              marginBottom: vs(6)
             }]}>{t('fullName')}</Text>
             <TextInput
               style={[
@@ -422,10 +470,11 @@ const EditProfileScreen = ({ navigation }: Props) => {
                   padding: INPUT_PADDING,
                   borderRadius: INPUT_RADIUS,
                   fontSize: ms(16),
-                  marginBottom: vs(12),
+                  marginBottom: vs(16),
                   backgroundColor: colors.inputBackground,
                   color: colors.text,
                   borderColor: colors.inputBorder,
+                  borderWidth: 1,
                 }
               ]}
               placeholder={t('fullNamePlaceholder')}
@@ -438,7 +487,8 @@ const EditProfileScreen = ({ navigation }: Props) => {
             {/* Email */}
             <Text style={[styles.label, { 
               fontSize: ms(13),
-              color: colors.textSecondary 
+              color: colors.textSecondary,
+              marginBottom: vs(6)
             }]}>{t('email')}</Text>
             <TextInput
               style={[
@@ -447,10 +497,11 @@ const EditProfileScreen = ({ navigation }: Props) => {
                   padding: INPUT_PADDING,
                   borderRadius: INPUT_RADIUS,
                   fontSize: ms(16),
-                  marginBottom: vs(12),
+                  marginBottom: vs(16),
                   backgroundColor: colors.inputBackground,
                   color: colors.text,
                   borderColor: colors.inputBorder,
+                  borderWidth: 1,
                 }
               ]}
               placeholder={t('emailPlaceholder')}
@@ -465,7 +516,8 @@ const EditProfileScreen = ({ navigation }: Props) => {
             {/* Teléfono */}
             <Text style={[styles.label, { 
               fontSize: ms(13),
-              color: colors.textSecondary 
+              color: colors.textSecondary,
+              marginBottom: vs(6)
             }]}>{t('phoneOptional')}</Text>
             <TextInput
               style={[
@@ -474,10 +526,11 @@ const EditProfileScreen = ({ navigation }: Props) => {
                   padding: INPUT_PADDING,
                   borderRadius: INPUT_RADIUS,
                   fontSize: ms(16),
-                  marginBottom: vs(12),
+                  marginBottom: vs(16),
                   backgroundColor: colors.inputBackground,
                   color: colors.text,
                   borderColor: colors.inputBorder,
+                  borderWidth: 1,
                 }
               ]}
               placeholder={t('phonePlaceholder')}
@@ -492,9 +545,10 @@ const EditProfileScreen = ({ navigation }: Props) => {
             {/* Nueva Contraseña */}
             <Text style={[styles.label, { 
               fontSize: ms(13),
-              color: colors.textSecondary 
+              color: colors.textSecondary,
+              marginBottom: vs(6)
             }]}>{t('newPassword')}</Text>
-            <View style={{ position: 'relative', marginBottom: vs(12) }}>
+            <View style={{ position: 'relative', marginBottom: vs(16) }}>
               <TextInput
                 style={[
                   styles.input,
@@ -506,6 +560,7 @@ const EditProfileScreen = ({ navigation }: Props) => {
                     backgroundColor: colors.inputBackground,
                     color: colors.text,
                     borderColor: colors.inputBorder,
+                    borderWidth: 1,
                   }
                 ]}
                 placeholder={t('newPasswordPlaceholder')}
@@ -518,10 +573,18 @@ const EditProfileScreen = ({ navigation }: Props) => {
               />
               <TouchableOpacity
                 onPress={() => setShowPass((v) => !v)}
-                style={[styles.eyeBtn, { right: hs(12), top: vs(12) }]}
+                style={[styles.eyeBtn, { 
+                  right: hs(12), 
+                  top: '50%',
+                  marginTop: -14,
+                }]}
                 disabled={loading}
               >
-                <Ionicons name={showPass ? 'eye-off' : 'eye'} size={ICON_SIZE} color={colors.placeholder} />
+                <Ionicons 
+                  name={showPass ? 'eye-off' : 'eye'} 
+                  size={ICON_SIZE} 
+                  color={colors.placeholder} 
+                />
               </TouchableOpacity>
             </View>
 
@@ -530,9 +593,10 @@ const EditProfileScreen = ({ navigation }: Props) => {
               <>
                 <Text style={[styles.label, { 
                   fontSize: ms(13),
-                  color: colors.textSecondary 
+                  color: colors.textSecondary,
+                  marginBottom: vs(6)
                 }]}>{t('confirmPassword')}</Text>
-                <View style={{ position: 'relative', marginBottom: vs(16) }}>
+                <View style={{ position: 'relative', marginBottom: vs(24) }}>
                   <TextInput
                     style={[
                       styles.input,
@@ -544,6 +608,7 @@ const EditProfileScreen = ({ navigation }: Props) => {
                         backgroundColor: colors.inputBackground,
                         color: colors.text,
                         borderColor: colors.inputBorder,
+                        borderWidth: 1,
                       }
                     ]}
                     placeholder={t('confirmPasswordPlaceholder')}
@@ -556,10 +621,18 @@ const EditProfileScreen = ({ navigation }: Props) => {
                   />
                   <TouchableOpacity
                     onPress={() => setShowConfirm((v) => !v)}
-                    style={[styles.eyeBtn, { right: hs(12), top: vs(12) }]}
+                    style={[styles.eyeBtn, { 
+                      right: hs(12), 
+                      top: '50%',
+                      marginTop: -14,
+                    }]}
                     disabled={loading}
                   >
-                    <Ionicons name={showConfirm ? 'eye-off' : 'eye'} size={ICON_SIZE} color={colors.placeholder} />
+                    <Ionicons 
+                      name={showConfirm ? 'eye-off' : 'eye'} 
+                      size={ICON_SIZE} 
+                      color={colors.placeholder} 
+                    />
                   </TouchableOpacity>
                 </View>
               </>
@@ -573,19 +646,30 @@ const EditProfileScreen = ({ navigation }: Props) => {
                   styles.primaryBtn,
                   loading && { opacity: 0.6 },
                   { 
-                    paddingVertical: vs(13), 
+                    paddingVertical: vs(16), 
                     borderRadius: INPUT_RADIUS, 
-                    marginTop: vs(8),
-                    backgroundColor: colors.primary 
+                    marginBottom: vs(16),
+                    backgroundColor: colors.primary,
+                    shadowColor: '#000',
+                    shadowOpacity: 0.3,
+                    shadowRadius: 10,
+                    shadowOffset: { width: 0, height: 4 },
+                    elevation: 6,
                   }
                 ]}
                 onPress={handleConvertToUser}
                 disabled={loading}
+                activeOpacity={0.8}
               >
                 {loading ? (
                   <ActivityIndicator color="#0b0b0c" />
                 ) : (
-                  <Text style={[styles.primaryText, { fontSize: ms(16) }]}>{t('createAccount')}</Text>
+                  <Text style={[styles.primaryText, { 
+                    fontSize: ms(16),
+                    fontWeight: '700'
+                  }]}>
+                    {t('createAccount')}
+                  </Text>
                 )}
               </TouchableOpacity>
             ) : (
@@ -595,19 +679,30 @@ const EditProfileScreen = ({ navigation }: Props) => {
                   styles.primaryBtn,
                   loading && { opacity: 0.6 },
                   { 
-                    paddingVertical: vs(13), 
+                    paddingVertical: vs(16), 
                     borderRadius: INPUT_RADIUS, 
-                    marginTop: vs(8),
-                    backgroundColor: colors.primary 
+                    marginBottom: vs(16),
+                    backgroundColor: colors.primary,
+                    shadowColor: '#000',
+                    shadowOpacity: 0.3,
+                    shadowRadius: 10,
+                    shadowOffset: { width: 0, height: 4 },
+                    elevation: 6,
                   }
                 ]}
                 onPress={handleSave}
                 disabled={loading}
+                activeOpacity={0.8}
               >
                 {loading ? (
                   <ActivityIndicator color="#0b0b0c" />
                 ) : (
-                  <Text style={[styles.primaryText, { fontSize: ms(16) }]}>{t('saveChanges')}</Text>
+                  <Text style={[styles.primaryText, { 
+                    fontSize: ms(16),
+                    fontWeight: '700'
+                  }]}>
+                    {t('saveChanges')}
+                  </Text>
                 )}
               </TouchableOpacity>
             )}
@@ -617,9 +712,8 @@ const EditProfileScreen = ({ navigation }: Props) => {
               style={[
                 styles.logoutBtn,
                 { 
-                  paddingVertical: vs(12), 
+                  paddingVertical: vs(16), 
                   borderRadius: INPUT_RADIUS, 
-                  marginTop: vs(12),
                   backgroundColor: 'transparent',
                   borderColor: colors.error,
                   borderWidth: 1,
@@ -627,9 +721,15 @@ const EditProfileScreen = ({ navigation }: Props) => {
               ]}
               onPress={handleLogout}
               disabled={loading}
+              activeOpacity={0.8}
             >
-              <Ionicons name="log-out-outline" size={ms(18)} color={colors.error} />
-              <Text style={[styles.logoutText, { fontSize: ms(14), color: colors.error }]}>
+              <Ionicons name="log-out-outline" size={ms(20)} color={colors.error} />
+              <Text style={[styles.logoutText, { 
+                fontSize: ms(16), 
+                color: colors.error,
+                fontWeight: '600',
+                marginLeft: hs(12)
+              }]}>
                 {esInvitado ? t('exitGuest') : t('logout')}
               </Text>
             </TouchableOpacity>
@@ -643,7 +743,6 @@ const EditProfileScreen = ({ navigation }: Props) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center'
   },
   header: {
     flexDirection: 'row',
@@ -652,7 +751,8 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   backButton: {
-    padding: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
     fontWeight: '800',
@@ -668,10 +768,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   userName: {
-    fontWeight: '600',
+    fontWeight: '700',
+    textAlign: 'center',
   },
   userEmail: {
     fontWeight: '400',
+    textAlign: 'center',
   },
   guestBadge: {
     alignItems: 'center',
@@ -681,18 +783,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   card: {
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 8
+    width: '100%',
   },
   label: {
-    marginBottom: 6
+    fontWeight: '500',
   },
   input: {
     width: '100%',
-    borderWidth: 1,
   },
   eyeBtn: {
     position: 'absolute',
@@ -703,17 +800,15 @@ const styles = StyleSheet.create({
   },
   primaryBtn: {
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
   },
   primaryText: {
     color: '#0b0b0c',
-    fontWeight: '800'
   },
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
   },
   logoutText: {
     fontWeight: '600',
