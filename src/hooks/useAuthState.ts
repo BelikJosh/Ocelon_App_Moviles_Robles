@@ -51,11 +51,65 @@ export const useAuthState = () => {
     console.log('🚪 Sesión cerrada');
   };
 
+  // ✅ NUEVA FUNCIÓN: Actualizar usuario localmente
+  const actualizarUsuarioLocal = async (nuevoUsuario: Usuario | Partial<Usuario>) => {
+    try {
+      console.log('🔄 Actualizando usuario localmente...');
+      
+      let usuarioActualizado: Usuario;
+      
+      if (usuario) {
+        // Combinar el usuario actual con los nuevos datos
+        usuarioActualizado = {
+          ...usuario,
+          ...nuevoUsuario,
+          ultimaActualizacion: new Date().toISOString()
+        } as Usuario;
+      } else {
+        // Si no hay usuario previo, crear uno nuevo
+        usuarioActualizado = nuevoUsuario as Usuario;
+      }
+      
+      // Actualizar estado
+      setUsuario(usuarioActualizado);
+      
+      // Guardar en AsyncStorage
+      await AsyncStorage.setItem('@user_data', JSON.stringify(usuarioActualizado));
+      
+      console.log('✅ Usuario actualizado localmente:', usuarioActualizado.nombre);
+      
+      return usuarioActualizado;
+    } catch (error) {
+      console.error('❌ Error actualizando usuario local:', error);
+      throw error;
+    }
+  };
+
+  // ✅ NUEVA FUNCIÓN: Actualizar campos específicos del usuario
+  const actualizarCamposUsuario = async (campos: Partial<Usuario>) => {
+    try {
+      if (!usuario) {
+        console.warn('⚠️ No hay usuario para actualizar');
+        return null;
+      }
+      
+      console.log('🔄 Actualizando campos del usuario:', Object.keys(campos));
+      
+      const usuarioActualizado = await actualizarUsuarioLocal(campos);
+      return usuarioActualizado;
+    } catch (error) {
+      console.error('❌ Error actualizando campos:', error);
+      return null;
+    }
+  };
+
   return {
     usuario,
     esInvitado,
     loading,
     logout,
-    refetch: cargarAuthState
+    refetch: cargarAuthState,
+    actualizarUsuarioLocal, // ✅ Exportar la nueva función
+    actualizarCamposUsuario // ✅ Opcional: función más específica
   };
 };
