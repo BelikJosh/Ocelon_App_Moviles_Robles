@@ -1,3 +1,4 @@
+// services/DynamoService.ts
 import AWS from 'aws-sdk';
 
 // Configurar AWS con las credenciales CORRECTAS
@@ -7,7 +8,6 @@ const config = {
   secretAccessKey: '2cpPHlpQxElx6s5rB/qxpFuexnq39LiU+X7fA11K', // ← Tu secret key
   correctClockSkew: true,
 };
-
 
 AWS.config.update(config);
 
@@ -30,7 +30,6 @@ export interface Usuario {
   ultimaActualizacion: string;
   estancias: any[];
   QR?: string; // ← NUEVO
-
 }
 
 export class DynamoDBService {
@@ -146,6 +145,7 @@ export class DynamoDBService {
       };
     }
   }
+
   // 📝 MÉTODO PARA CREAR USUARIO
   static async crearUsuario(usuarioData: {
     nombre: string;
@@ -196,6 +196,7 @@ export class DynamoDBService {
       }
     });
   }
+
   // Agrega esta función para diagnosticar
   static async diagnosticarPermisos(): Promise<void> {
     console.log('🔍 Iniciando diagnóstico de permisos...');
@@ -254,6 +255,7 @@ export class DynamoDBService {
       console.error('❌ Error en test query:', error);
     }
   }
+
   // 🔍 MÉTODO PARA VERIFICAR PERMISOS
   static async verificarPermisos(): Promise<void> {
     return new Promise((resolve) => {
@@ -276,6 +278,7 @@ export class DynamoDBService {
     });
   }
 
+  // 🔄 MÉTODO PARA ACTUALIZAR QR
   static async actualizarQRUsuario(userId: string, qr: string): Promise<void> {
     const now = new Date().toISOString();
     const params: AWS.DynamoDB.DocumentClient.UpdateItemInput = {
@@ -296,34 +299,131 @@ export class DynamoDBService {
     await dynamoDB.update(params).promise();
   }
 
-  /** (Opcional) Actualiza campos arbitrarios por ID */
+  // 🔄 MÉTODO CORREGIDO PARA ACTUALIZAR CAMPOS DEL USUARIO
   static async actualizarCamposUsuario(
     userId: string,
-    fields: Partial<Pick<Usuario, 'QR' | 'telefono' | 'nombre' | 'password' | 'wallet'>>
+    fields: Record<string, any>
   ): Promise<void> {
-    const now = new Date().toISOString();
+    try {
+      const now = new Date().toISOString();
 
-    const names: Record<string, string> = { '#UA': 'ultimaActualizacion' };
-    const vals: Record<string, any> = { ':ua': now };
-    const sets: string[] = ['#UA = :ua'];
+      // Preparar la expresión de actualización
+      const expressionAttributeNames: Record<string, string> = {};
+      const expressionAttributeValues: Record<string, any> = { ':ua': now };
+      const updateExpressions: string[] = ['#UA = :ua'];
 
-    Object.entries(fields).forEach(([k, v], i) => {
-      const nameKey = `#F${i}`;
-      const valKey = `:v${i}`;
-      names[nameKey] = k;
-      vals[valKey] = v;
-      sets.push(`${nameKey} = ${valKey}`);
-    });
+      // Añadir nombre para ultimaActualizacion
+      expressionAttributeNames['#UA'] = 'ultimaActualizacion';
 
-    const params: AWS.DynamoDB.DocumentClient.UpdateItemInput = {
-      TableName: 'Usuarios',
-      Key: { id: userId },
-      UpdateExpression: `SET ${sets.join(', ')}`,
-      ExpressionAttributeNames: names,
-      ExpressionAttributeValues: vals,
-      ReturnValues: 'NONE',
-    };
+      // Contador para evitar conflictos de nombres
+      let counter = 0;
 
-    await dynamoDB.update(params).promise();
+      // Procesar cada campo, EXCLUYENDO 'ultimaActualizacion' para evitar duplicados
+      Object.entries(fields).forEach(([key, value]) => {
+        // Excluir 'ultimaActualizacion' ya que ya lo incluimos arriba
+        if (key !== 'ultimaActualizacion' && value !== undefined) {
+          const nameKey = `#F${counter}`;
+          const valueKey = `:v${counter}`;
+          
+          expressionAttributeNames[nameKey] = key;
+          expressionAttributeValues[valueKey] = value;
+          updateExpressions.push(`${nameKey} = ${valueKey}`);
+          
+          counter++;
+        }
+      });
+
+      // Verificar que haya algo para actualizar
+      if (updateExpressions.length === 1 && updateExpressions[0] === '#UA = :ua') {
+        console.log('⚠️ Solo se actualizará ultimaActualizacion');
+      }
+
+      const UpdateExpression = `SET ${updateExpressions.join(', ')}`;
+
+      const params: AWS.DynamoDB.DocumentClient.UpdateItemInput = {
+        TableName: 'Usuarios',
+        Key: { id: userId },
+        UpdateExpression,
+        ExpressionAttributeNames: expressionAttributeNames,
+        ExpressionAttributeValues: expressionAttributeValues,
+        ReturnValues: 'UPDATED_NEW'
+      };
+
+      console.log('📝 Ejecutando update en DynamoDB con params:', JSON.stringify(params, null, 2));
+
+      await dynamoDB.update(params).promise();
+      console.log('✅ Usuario actualizado exitosamente en DynamoDB');
+
+    } catch (error: any) {
+      console.error('❌ Error en actualizarCamposUsuario:', {
+        message: error.message,
+        code: error.code,
+        userId,
+        fields
+      });
+      throw error;
+    }
+  }
+
+  // 🔄 MÉTODO ESPECÍFICO PARA ACTUALIZAR PERFIL (ALTERNATIVA MÁS SEGURA)
+  static async actualizarPerfilUsuario(
+    userId: string,
+    datosPerfil: {
+      nombre?: string;
+      email?: string;
+      telefono?: string | null;
+      password?: string;
+    }
+  ): Promise<void> {
+    try {
+      const now = new Date().toISOString();
+
+      const names: Record<string, string> = { '#UA': 'ultimaActualizacion' };
+      const vals: Record<string, any> = { ':ua': now };
+      const sets: string[] = ['#UA = :ua'];
+
+      // Agregar cada campo si está definido
+      if (datosPerfil.nombre !== undefined) {
+        names['#N'] = 'nombre';
+        vals[':n'] = datosPerfil.nombre;
+        sets.push('#N = :n');
+      }
+
+      if (datosPerfil.email !== undefined) {
+        names['#E'] = 'email';
+        vals[':e'] = datosPerfil.email;
+        sets.push('#E = :e');
+      }
+
+      if (datosPerfil.telefono !== undefined) {
+        names['#T'] = 'telefono';
+        vals[':t'] = datosPerfil.telefono;
+        sets.push('#T = :t');
+      }
+
+      if (datosPerfil.password !== undefined) {
+        names['#P'] = 'password';
+        vals[':p'] = datosPerfil.password;
+        sets.push('#P = :p');
+      }
+
+      const params: AWS.DynamoDB.DocumentClient.UpdateItemInput = {
+        TableName: 'Usuarios',
+        Key: { id: userId },
+        UpdateExpression: `SET ${sets.join(', ')}`,
+        ExpressionAttributeNames: names,
+        ExpressionAttributeValues: vals,
+        ReturnValues: 'NONE',
+      };
+
+      console.log('📝 Actualizando perfil en DynamoDB:', JSON.stringify(params, null, 2));
+
+      await dynamoDB.update(params).promise();
+      console.log('✅ Perfil actualizado exitosamente');
+
+    } catch (error: any) {
+      console.error('❌ Error al actualizar perfil:', error);
+      throw error;
+    }
   }
 }

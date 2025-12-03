@@ -6,8 +6,8 @@ import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import TimerFloatingBar from '../components/TimerFloatingBar';
-import { useAuthState } from '../hooks/useAuthState';
 import { useConfig } from '../contexts/ConfigContext'; // Importa el hook de configuración
+import { useAuthState } from '../hooks/useAuthState';
 import ConfigScreen from './ConfigScreen';
 import HomeScreen from './HomeScreen';
 import MapScreen from './MapScreen';
@@ -135,7 +135,7 @@ function ScreenWithTopBar({ Component, navigation }: { Component: any; navigatio
         <TopBar
           userName={getUserName()}
           userStatus={getUserStatus()}
-          onPressProfile={() => console.log('ProfileScreen')}
+          onPressProfile={() => navigation.navigate('Profile')}
           onPressNotifications={() => console.log('NotifScreen')}
           onPressSupport={() => setShowSupport(true)}
         />
