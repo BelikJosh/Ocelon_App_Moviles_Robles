@@ -1,4 +1,3 @@
-// screens/EditProfileScreen.tsx
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect, useState } from 'react';
